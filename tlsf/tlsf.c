@@ -627,12 +627,11 @@ typedef struct integrity_t {
 } integrity_t;
 
 #define tlsf_insist(x)  \
-    {                   \
+    do {                \
         tlsf_assert(x); \
-        if (!(x)) {     \
+        if (!(x))       \
             status--;   \
-        }               \
-    }
+    } while (0)
 
 static void integrity_walker(void *ptr, size_t size, int used, void *user)
 {
