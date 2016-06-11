@@ -6,7 +6,6 @@
  * found in the LICENSE file.
  */
 
-#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -23,6 +22,13 @@
 #else
 #define likely(x) (x)
 #define unlikely(x) (x)
+#endif
+
+#ifdef TLSF_CONFIG_ASSERT
+#include <assert.h>
+#define tlsf_assert(expr) assert(expr)
+#else
+#define tlsf_assert(expr) (void)(0)
 #endif
 
 /* Public constants: may be modified. */
@@ -80,16 +86,8 @@ enum tlsf_private {
 #define tlsf_max(a, b) ((a) > (b) ? (a) : (b))
 
 /*
- * Set assert macro, if it has not been provided by the user.
- */
-#if !defined(tlsf_assert)
-#define tlsf_assert assert
-#endif
-
-/*
  * Static assertion mechanism.
  */
-
 #define _tlsf_glue2(x, y) x##y
 #define _tlsf_glue(x, y) _tlsf_glue2(x, y)
 #define tlsf_static_assert(exp) \
@@ -108,7 +106,7 @@ tlsf_static_assert(ALIGN_SIZE == SMALL_BLOCK_SIZE / SL_INDEX_COUNT);
 
 /*
  * Data structures and associated constants.
-*/
+ */
 
 /*
  * Block header structure.
