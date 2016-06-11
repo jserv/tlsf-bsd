@@ -1,7 +1,7 @@
 # TLSF-BSD
 
 Two Level Segregated Fit memory allocator implementation with O(1)
-time complexity, licensed under the BSD License.
+time complexity, distributed under the BSD License.
 
 Features
 --------
@@ -21,6 +21,11 @@ Notes
 -----
 This code was based on the TLSF 1.4 spec and documentation found at:
     http://www.gii.upv.es/tlsf/main/docs
+
+Reference:
+    M. Masmano, I. Ripoll, A. Crespo, and J. Real.
+    TLSF: a new dynamic memory allocator for real-time systems.
+    In Proc. ECRTS (2004), IEEE Computer Society, pp. 79-86.
 
 This implementation was written to the specification of the document,
 therefore no GPL restrictions apply.
