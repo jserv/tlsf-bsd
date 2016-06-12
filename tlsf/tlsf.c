@@ -582,6 +582,9 @@ static block_header_t *block_locate_free(control_t *control, size_t size)
         remove_free_block(control, block, fl, sl);
     }
 
+    if (unlikely(block && !block->size))
+        block = NULL;
+
     return block;
 }
 
