@@ -365,7 +365,7 @@ static block_header_t *search_suitable_block(control_t *control,
         const unsigned int fl_map = control->fl_bitmap & (((unsigned int)~0) << (fl + 1));
         if (!fl_map) {
             /* No free blocks available, memory has been exhausted. */
-            return 0;
+            return NULL;
         }
 
         fl = tlsf_ffs(fl_map);
@@ -571,7 +571,7 @@ static block_header_t *block_trim_free_leading(control_t *control,
 static block_header_t *block_locate_free(control_t *control, size_t size)
 {
     int fl = 0, sl = 0;
-    block_header_t *block = 0;
+    block_header_t *block = NULL;
 
     if (size) {
         mapping_search(size, &fl, &sl);
@@ -590,7 +590,7 @@ static void *block_prepare_used(control_t *control,
                                 block_header_t *block,
                                 size_t size)
 {
-    void *p = 0;
+    void *p = NULL;
     if (block) {
         tlsf_assert(size && "size must be non-zero");
         block_trim_free(control, block, size);
@@ -859,7 +859,7 @@ tlsf_t tlsf_create(void *mem)
     if (((tlsfptr_t)mem % ALIGN_SIZE) != 0) {
         printf("tlsf_create: Memory must be aligned to %u bytes.\n",
                (unsigned int)ALIGN_SIZE);
-        return 0;
+        return NULL;
     }
 
     control_construct(tlsf_cast(control_t *, mem));
@@ -979,7 +979,7 @@ void tlsf_free(tlsf_t tlsf, void *ptr)
 void *tlsf_realloc(tlsf_t tlsf, void *ptr, size_t size)
 {
     control_t *control = tlsf_cast(control_t *, tlsf);
-    void *p = 0;
+    void *p = NULL;
 
     /* Zero-size requests are treated as free. */
     if (ptr && size == 0) {
