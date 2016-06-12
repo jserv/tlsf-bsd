@@ -84,13 +84,13 @@ static void random_test(const size_t spacelen, const size_t cap)
 
 static void random_sizes_test(void)
 {
-    const size_t sizes[] = {128, 1024, 1024 * 1024, 128 * 1024 * 1024};
+    const uint32_t sizes[] = {128, 1024, 1024 * 1024, 128 * 1024 * 1024};
 
     for (unsigned i = 0; i < __arraycount(sizes); i++) {
         unsigned n = 1024;
 
         while (n--) {
-            size_t cap = random() % sizes[i] + 1;
+            uint32_t cap = random() % sizes[i] + 1;
 	    printf("sizes = %d, cap = %d\n", sizes[i], cap);
             random_test(sizes[i], cap);
         }
