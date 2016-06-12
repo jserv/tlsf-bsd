@@ -1,13 +1,16 @@
 OUT = build
 
-TARGETS = test-alloc test-bits
+TARGETS = \
+	test-bits \
+	test-alloc
 TARGETS := $(addprefix $(OUT)/,$(TARGETS))
 
 all: $(TARGETS)
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -g -m32 -I tlsf \
-          -D TLSF_CONFIG_ASSERT
+CFLAGS = \
+	-std=c99 -Wall -g -m32 -I tlsf \
+	-D TLSF_CONFIG_ASSERT
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))
