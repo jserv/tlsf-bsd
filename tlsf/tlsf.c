@@ -622,6 +622,7 @@ static void control_construct(control_t *control)
 /*
  * Debugging utilities.
  */
+#ifdef TSLF_CONFIG_DEBUG
 
 typedef struct integrity_t {
     int prev_status;
@@ -746,6 +747,8 @@ int tlsf_check_pool(pool_t pool)
 
     return integ.status;
 }
+
+#endif /* TLSF_CONFIG_DEBUG */
 
 /*
  * Size of the TLSF structures in a given memory block passed to
