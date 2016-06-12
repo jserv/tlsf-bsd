@@ -9,7 +9,7 @@ all: $(TARGETS)
 
 CC = gcc
 CFLAGS = \
-	-std=c99 -Wall -g -m32 -I tlsf \
+	-std=c99 -Wall -g -I tlsf \
 	-D TLSF_CONFIG_ASSERT
 
 OBJS = tlsf.o
