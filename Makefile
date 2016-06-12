@@ -6,7 +6,8 @@ TARGETS := $(addprefix $(OUT)/,$(TARGETS))
 all: $(TARGETS)
 
 CC = gcc
-CFLAGS = -std=c99 -Wall -g -m32 -I tlsf
+CFLAGS = -std=c99 -Wall -g -m32 -I tlsf \
+          -D TLSF_CONFIG_ASSERT
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))
