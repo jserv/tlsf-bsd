@@ -8,7 +8,7 @@
 #ifndef _BSD_SOURCE
 #define _BSD_SOURCE
 #endif
-
+#define _POSIX_C_SOURCE 199309L
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
