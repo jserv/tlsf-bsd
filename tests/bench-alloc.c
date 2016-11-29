@@ -141,6 +141,13 @@ static void start_bench(void *arg)
                         &lran2_state);
 }
 
+static void stop_bench(void *arg)
+{
+    struct alloc_desc *desc = arg;
+    if (!desc) return;
+    free(desc->blk_array);
+}
+
 int main(int argc, char **argv)
 {
     size_t blk_min = 512, blk_max = 512, num_blks = 10000;
@@ -189,13 +196,14 @@ int main(int argc, char **argv)
     memset(desc.blk_array, 0, num_blks * sizeof(unsigned char *));
 
     struct timespec start, end;
+
     int err = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
     assert(err == 0);
-
     start_bench(&desc);
 
     err = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
     assert(err == 0);
+    stop_bench(&desc);
 
     double elapsed = (end.tv_sec - start.tv_sec) +
                      (end.tv_nsec - start.tv_nsec) * 1e-9;
