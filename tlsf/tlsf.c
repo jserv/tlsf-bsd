@@ -237,7 +237,7 @@ static void *block_to_ptr(const block_header_t *block)
 }
 
 /* Return location of next block after block of given size. */
-static block_header_t *offset_to_block(const void *ptr, size_t size)
+static block_header_t *offset_to_block(const void *ptr, tlsfptr_t size)
 {
     return tlsf_cast(block_header_t *, tlsf_cast(tlsfptr_t, ptr) + size);
 }
