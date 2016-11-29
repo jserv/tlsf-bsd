@@ -13,15 +13,13 @@ struct lran2_st {
     long x, y, v[97];
 };
 
-static void lran2_init(struct lran2_st *d, long seed)
+static inline
+void lran2_init(struct lran2_st *d, long seed)
 {
-    long x;
-    int j;
-
-    x = (IC - seed) % LRAN2_MAX;
+    long x = (IC - seed) % LRAN2_MAX;
     if (x < 0)
         x = -x;
-    for (j = 0; j < 97; j++) {
+    for (int j = 0; j < 97; j++) {
         x = (IA * x + IC) % LRAN2_MAX;
         d->v[j] = x;
     }
@@ -29,11 +27,8 @@ static void lran2_init(struct lran2_st *d, long seed)
     d->y = d->x;
 }
 
-#ifdef __GNUC__
-__inline__
-#endif
-    static long
-    lran2(struct lran2_st *d)
+static inline
+long lran2(struct lran2_st *d)
 {
     int j = (d->y % 97);
 
