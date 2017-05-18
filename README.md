@@ -5,12 +5,12 @@ Released under the BSD license.
 
 Features
 --------
-  * O(1) cost for malloc, free, realloc, memalign
+  * O(1) cost for malloc, free, realloc
   * Extremely low overhead per allocation (4 bytes)
   * Low overhead per TLSF management of pools (~3kB)
   * Low fragmentation
   * Compiles to only a few kB of code and data
-  * Support for adding and removing memory pool regions on the fly
+  * Requests memory from the os on demand via callback
 
 Caveats
 -------
@@ -27,6 +27,19 @@ It also leverages the TLSF 2.0 improvement to shrink the per-block overhead from
 
 History
 -------
+
+master
+  * tlsf_create takes tlsf_map_t and tlsf_unmap_t callbacks
+    to request memory from the os and return it
+  * Added tlsf_stats. Useful for debugging.
+  * tlsf_malloc might request more memory from the os
+  * tlsf_free might return memory to the os
+  * Added tlsf_calloc
+  * Removed tlsf_memalign
+  * Walker functions removed
+  * Removed exposure of interna (overhead and limits)
+  * UNTESTED ON 32 BIT, 8 byte alignment required now for pool bit
+
 2016/04/10 - v3.1
   * Code moved to github
   * tlsfbits.h rolled into tlsf.c
@@ -82,7 +95,7 @@ History
 2006/09/09 - v1.2
   * Add tlsf_block_size
   * Static assertion mechanism for invariants
-  * Minor bugfixes 
+  * Minor bugfixes
 
 2006/09/01 - v1.1
   * Add tlsf_realloc
