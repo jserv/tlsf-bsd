@@ -11,23 +11,23 @@ test: all
 	./build/bench
 	./build/bench -s 32
 	./build/bench -s 10:12345
-	./build/test | grep OK
+	./build/test
 
-CC = gcc
 CFLAGS = \
 	-std=c11 -g -Wextra -Wconversion -Wc++-compat -Wall \
 	-DTLSF_ASSERT -DTLSF_DEBUG -DTLSF_STATS
-LDFLAGS =
+LDFLAGS = -lrt
+CFLAGS_TEST = $(CFLAGS) -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=700
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))
 deps := $(OBJS:%.o=%.o.d)
 
 $(OUT)/test: $(OBJS) test.c
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS_TEST) -o $@ $^ $(LDFLAGS)
 
 $(OUT)/bench: $(OBJS) bench.c
-	$(CC) $(CFLAGS) -o $@ -MMD -MF $@.d $^ $(LDFLAGS)
+	$(CC) $(CFLAGS_TEST) -o $@ -MMD -MF $@.d $^ $(LDFLAGS)
 
 $(OUT)/%.o: %.c
 	@mkdir -p $(OUT)

@@ -2,7 +2,6 @@
  * All rights reserved.
  * Use of this source code is governed by a BSD-style license.
  */
-#define _DEFAULT_SOURCE
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
@@ -11,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
+#include <time.h>
 #include <sys/resource.h>
 #include <time.h>
 #include "tlsf.h"

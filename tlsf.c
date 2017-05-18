@@ -263,10 +263,6 @@ static inline size_t align_up(size_t x) {
   return (x + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1);
 }
 
-static inline size_t align_down(size_t x) {
-  return x - (x & (ALIGN_SIZE - 1));
-}
-
 static inline void* align_ptr(const void* ptr) {
   return (void*)align_up((size_t)ptr);
 }

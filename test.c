@@ -2,7 +2,6 @@
  * All rights reserved.
  * Use of this source code is governed by a BSD-style license.
  */
-#define _DEFAULT_SOURCE
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
