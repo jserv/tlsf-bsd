@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/reg.h> // needed for __WORDSIZE in musl
 #include "tlsf.h"
 
 // Detect whether or not we are building for a 32- or 64-bit architecture
 #if __WORDSIZE == 64
 #  define TLSF_64BIT
+#elif !defined(__WORDSIZE)
+#  error __WORDSIZE is not defined
 #endif
 
 /*

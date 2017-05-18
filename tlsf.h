@@ -40,7 +40,9 @@
 
 #include <stddef.h>
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct tlsf_s* tlsf_t;
 
@@ -72,6 +74,8 @@ void tlsf_printstats(tlsf_t t);
 void tlsf_check(tlsf_t t);
 #endif
 
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif
