@@ -6,22 +6,20 @@
 #include <stdbool.h>
 #include "tlsf.h"
 
-/*
- * Detect whether or not we are building for a 32- or 64-bit (LP/LLP)
- * architecture. There is no reliable portable method at compile-time.
-*/
-#if defined (__alpha__) || defined (__ia64__) || defined (__x86_64__) || defined (_WIN64) || defined (__LP64__) || defined (__LLP64__)
-#define TLSF_64BIT
+// Detect whether or not we are building for a 32- or 64-bit architecture
+#if __WORDSIZE == 64
+#  define TLSF_64BIT
 #endif
 
-/* log2 of number of linear subdivisions of block sizes. Larger
+/*
+ * log2 of number of linear subdivisions of block sizes. Larger
  * values require more memory in the control structure. Values of
  * 4 or 5 are typical.
  */
 #define SL_INDEX_COUNT_SHIFT 5
 
 // All allocation sizes and addresses are aligned.
-#if defined (TLSF_64BIT)
+#ifdef TLSF_64BIT
 #define ALIGN_SIZE_SHIFT 3
 #else
 #define ALIGN_SIZE_SHIFT 3
@@ -43,7 +41,7 @@
  * of more overhead in the TLSF structure.
  *
 */
-#if defined (TLSF_64BIT)
+#ifdef TLSF_64BIT
 #define FL_INDEX_MAX 33 // 8G
 #else
 #define FL_INDEX_MAX 30 // 2G
@@ -325,13 +323,11 @@ static block_t search_suitable_block(tlsf_t t, unsigned int *fli, unsigned int *
     if (!fl_map)
       return 0;
 
-    fl = ffs(fl_map);
-    *fli = fl;
+    *fli = fl = ffs(fl_map);
     sl_map = t->sl_bitmap[fl];
   }
   ASSERT(sl_map, "Second level bitmap is null");
-  sl = ffs(sl_map);
-  *sli = sl;
+  *sli = sl = ffs(sl_map);
 
   // Return the first block in the free list.
   return t->blocks[fl][sl];
