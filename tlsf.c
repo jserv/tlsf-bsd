@@ -246,9 +246,11 @@ static inline size_t align_up(size_t x) {
   return (x + (ALIGN_SIZE - 1UL)) & ~(ALIGN_SIZE - 1UL);
 }
 
+#if defined TLSF_ASSERT && !defined NDEBUG
 static inline void* align_ptr(const void* ptr) {
   return (void*)align_up((size_t)ptr);
 }
+#endif
 
 /*
  * Adjust an allocation size to be aligned to word size, and no smaller
@@ -532,7 +534,7 @@ static void remove_pool(tlsf_t t, block_t block) {
   --t->stats.pool_count;
 #endif
 
-  ASSERT(block_size(block_next(block)) == 0, "sentinel should have size 0");
+  ASSERT(block_is_last(block_next(block)), "sentinel should be last");
   ASSERT(!block_is_free(block_next(block)), "sentinel block should not be free");
   t->unmap((char*)block + BLOCK_OVERHEAD, size + POOL_OVERHEAD, t->user);
 }
@@ -582,7 +584,7 @@ void tlsf_destroy(tlsf_t t) {
 
   if (t->unmap) {
     block_t first_block = OFFSET_TO_BLOCK(t, TLSF_SIZE  - BLOCK_OVERHEAD);
-    ASSERT(block_size(block_next(first_block)) == 0, "sentinel should have size 0");
+    ASSERT(block_is_last(block_next(first_block)), "sentinel should be last");
     ASSERT(!block_is_free(block_next(first_block)), "sentinel block should not be free");
     t->unmap(t, TLSF_SIZE + block_size(first_block) + POOL_OVERHEAD, t->user);
   }
@@ -628,7 +630,7 @@ void tlsf_free(tlsf_t t, void* mem) {
   block = block_merge_prev(t, block);
   block = block_merge_next(t, block);
 
-  if ((block->header & BLOCK_POOL_BIT) && block_size(block_next(block)) == 0 && t->unmap)
+  if ((block->header & BLOCK_POOL_BIT) && block_is_last(block_next(block)) && t->unmap)
     remove_pool(t, block);
   else
     block_insert(t, block);
