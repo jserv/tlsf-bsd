@@ -25,7 +25,7 @@
 #ifdef TLSF_64BIT
 #define ALIGN_SIZE_SHIFT 3
 #else
-#define ALIGN_SIZE_SHIFT 3
+#define ALIGN_SIZE_SHIFT 2
 #endif
 
 #define ALIGN_SIZE (1UL << ALIGN_SIZE_SHIFT)
@@ -47,7 +47,7 @@
 #ifdef TLSF_64BIT
 #define FL_INDEX_MAX 33 // 8G
 #else
-#define FL_INDEX_MAX 30 // 2G
+#define FL_INDEX_MAX 29 // 1G
 #endif
 
 #define SL_INDEX_COUNT (1U << SL_INDEX_COUNT_SHIFT)
@@ -62,9 +62,9 @@
  * - bit 0: whether block is busy or free
  * - bit 1: whether previous block is busy or free
 */
-#define BLOCK_FREE_BIT      1U
-#define BLOCK_PREV_FREE_BIT 2U
-#define BLOCK_POOL_BIT      4U
+#define BLOCK_FREE_BIT      (1UL << (__WORDSIZE - 1))
+#define BLOCK_PREV_FREE_BIT (1UL << (__WORDSIZE - 2))
+#define BLOCK_POOL_BIT      (1UL << (__WORDSIZE - 3))
 #define BLOCK_BITMASK       (BLOCK_POOL_BIT | BLOCK_FREE_BIT | BLOCK_PREV_FREE_BIT)
 
 /*
@@ -464,10 +464,10 @@ static block_t block_merge_next(tlsf_t t, block_t block) {
 static void block_trim_free(tlsf_t t, block_t block, size_t size) {
   ASSERT(block_is_free(block), "block must be free");
   if (block_can_split(block, size)) {
-    block_t remaining_block = block_split(block, size);
+    block_t remaining = block_split(block, size);
     block_link_next(block);
-    block_set_prev_free(remaining_block, true);
-    block_insert(t, remaining_block);
+    block_set_prev_free(remaining, true);
+    block_insert(t, remaining);
   }
 }
 
@@ -476,11 +476,11 @@ static void block_trim_used(tlsf_t t, block_t block, size_t size) {
   ASSERT(!block_is_free(block), "block must be used");
   if (block_can_split(block, size)) {
     // If the next block is free, we must coalesce.
-    block_t remaining_block = block_split(block, size);
-    block_set_prev_free(remaining_block, false);
+    block_t remaining = block_split(block, size);
+    block_set_prev_free(remaining, false);
 
-    remaining_block = block_merge_next(t, remaining_block);
-    block_insert(t, remaining_block);
+    remaining = block_merge_next(t, remaining);
+    block_insert(t, remaining);
   }
 }
 
