@@ -109,9 +109,9 @@
   } while (0)
 
 // This code has been tested on 32- and 64-bit (LP/LLP) architectures.
-_Static_assert(sizeof(int) * 8 == 32, "Integer must be 32 bit");
-_Static_assert(sizeof(size_t) * 8 >= 32, "size_t must be 32 bit or more");
-_Static_assert(sizeof(size_t) * 8 <= 64, "size_t must be 64 bit or less");
+_Static_assert(sizeof(int) == 4, "Integer must be 32 bit");
+_Static_assert(sizeof(size_t) * 8 == __WORDSIZE, "size_t must have __WORDSIZE bits");
+_Static_assert(sizeof(size_t) == 4 || sizeof (size_t) == 8, "size_t must be 32 bit or more");
 _Static_assert(sizeof(unsigned int) * 8 >= SL_INDEX_COUNT, "SL_INDEX_COUNT must be <= number of bits in sl_bitmap's storage type.");
 _Static_assert(ALIGN_SIZE == SMALL_BLOCK_SIZE / SL_INDEX_COUNT, "Ensure we've properly tuned our sizes.");
 
