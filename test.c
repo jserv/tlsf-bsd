@@ -3,19 +3,21 @@
  * Use of this source code is governed by a BSD-style license.
  */
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
-#include <err.h>
+#include <sys/mman.h>
 #include "tlsf.h"
 
 static void* tlsf_map(size_t* min_size, void* user) {
   size_t spacelen = *(size_t*)user;
   *min_size += spacelen;
   void* p = malloc(*min_size);
+  assert(p);
   printf("map addr=%p size=%lu\n", p, *min_size);
   return p;
 }
@@ -26,13 +28,27 @@ static void tlsf_unmap(void* p, size_t s, void* user) {
   free(p);
 }
 
+static void* tlsf_map_large(size_t* min_size, void* user) {
+  if (user && *min_size < TLSF_MAX_SIZE)
+    *min_size = TLSF_MAX_SIZE;
+  size_t page = (size_t)sysconf(_SC_PAGESIZE);
+  *min_size = page * ((*min_size + page - 1UL) / page);
+  void* p = mmap(0, *min_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
+  assert(p != (void*)(-1));
+  return p;
+}
+
+static void tlsf_unmap_large(void* p, size_t s, void* user) {
+  (void)user;
+  int ret = munmap(p, s);
+  assert(ret == 0);
+}
+
 static void random_test(size_t spacelen, const size_t cap) {
   const size_t maxitems = 2 * spacelen;
 
   void** p = (void**)malloc(maxitems * sizeof(void *));
-  if (p == NULL) {
-    err(EXIT_FAILURE, "malloc");
-  }
+  assert(p);
 
   tlsf_t t = tlsf_create(tlsf_map, tlsf_unmap, &spacelen);
   assert(t != NULL);
@@ -116,8 +132,51 @@ static void random_sizes_test(void) {
   }
 }
 
+static void large_alloc(tlsf_t t, size_t s) {
+  printf("large alloc %lu\n", s);
+  for (size_t d = 0; d < 100 && d < s; ++d) {
+    void* p = tlsf_malloc(t, s - d);
+    assert(p);
+
+    void* q = tlsf_malloc(t, s - d);
+    assert(q);
+    tlsf_free(t, q);
+
+    q = tlsf_malloc(t, s - d);
+    assert(q);
+    tlsf_free(t, q);
+
+    tlsf_free(t, p);
+
+#ifdef TLSF_DEBUG
+    tlsf_check(t);
+#endif
+  }
+}
+
+static void large_size_test(bool large_pool) {
+  tlsf_t t = tlsf_create(tlsf_map_large, tlsf_unmap_large, large_pool ? (void*)1 : 0);
+  assert(t != NULL);
+
+  size_t s = 1;
+  while (s <= TLSF_MAX_SIZE) {
+    large_alloc(t, s);
+    s *= 2;
+  }
+
+  s = TLSF_MAX_SIZE;
+  while (s > 0) {
+    large_alloc(t, s);
+    s /= 2;
+  }
+
+  tlsf_destroy(t);
+}
+
 int main(void) {
   srand((unsigned int)time(0));
+  large_size_test(true);
+  large_size_test(false);
   random_sizes_test();
   puts("OK!");
   return 0;

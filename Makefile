@@ -17,7 +17,7 @@ CFLAGS = \
 	-std=c11 -g -Wextra -Wconversion -Wc++-compat -Wall \
 	-DTLSF_ASSERT -DTLSF_DEBUG -DTLSF_STATS
 LDFLAGS = -lrt
-CFLAGS_TEST = $(CFLAGS) -D_DEFAULT_SOURCE -D_XOPEN_SOURCE=700
+CFLAGS_TEST = $(CFLAGS) -std=gnu11
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))

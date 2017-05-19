@@ -40,6 +40,25 @@
 
 #include <stddef.h>
 
+// Ensure that __WORDSIZE is defined
+#ifndef __WORDSIZE
+#  include <sys/reg.h> // needed by musl
+#  ifndef __WORDSIZE
+#    error __WORDSIZE is not defined
+#  endif
+#endif
+
+#if __WORDSIZE == 64
+#  define TLSF_MAX_SHIFT 36 // 64G
+#elif __WORDSIZE == 32
+#  define TLSF_MAX_SHIFT 29 // 512M
+#else
+#  error "__WORDSIZE must be 32 or 64"
+#endif
+
+// Maximum allocation size
+#define TLSF_MAX_SIZE  ((1UL << TLSF_MAX_SHIFT) - sizeof (size_t))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
