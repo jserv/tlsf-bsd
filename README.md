@@ -38,7 +38,7 @@ master
   * Removed tlsf_memalign
   * Walker functions removed
   * Removed exposure of interna (overhead and limits)
-  * UNTESTED ON 32 BIT, 8 byte alignment required now for pool bit
+  * UNTESTED ON 32 BIT
 
 2016/04/10 - v3.1
   * Code moved to github
