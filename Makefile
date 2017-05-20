@@ -14,7 +14,8 @@ test: all
 	./build/test
 
 CFLAGS = \
-	-std=c11 -g -Wextra -Wconversion -Wc++-compat -Wall -O2 \
+	-std=c11 -g -O2 \
+	-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
 	-DTLSF_ASSERT -DTLSF_DEBUG -DTLSF_STATS
 LDFLAGS = -lrt
 CFLAGS_TEST = $(CFLAGS) -std=gnu11
