@@ -53,7 +53,7 @@
 #elif __WORDSIZE == 32
 #  define TLSF_MAX_SHIFT 29 // 512M
 #else
-#  error "__WORDSIZE must be 32 or 64"
+#  error __WORDSIZE must be 32 or 64
 #endif
 
 // Maximum allocation size
