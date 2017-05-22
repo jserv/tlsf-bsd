@@ -157,13 +157,13 @@ struct tlsf_s {
  * ffs/fls return 1-32 by default, returning 0 for error.
  */
 
-static inline unsigned int ffs(size_t x) {
+static inline unsigned int tlsf_ffs(size_t x) {
   unsigned int i = (unsigned int)__builtin_ffs((int)x);
   ASSERT(i, "No set bit found");
   return i - 1U;
 }
 
-static inline unsigned int fls(size_t x) {
+static inline unsigned int tlsf_fls(size_t x) {
   return (unsigned int)(x ? 8 * sizeof (size_t) - (unsigned int)__builtin_clzl(x) - 1 : 0);
 }
 
@@ -266,7 +266,7 @@ static inline size_t adjust_size(size_t size) {
 
 // Rounds up to the next block size
 static inline size_t round_block_size(size_t size) {
-  return size >= SMALL_BLOCK_SIZE ? size + (1UL << (fls(size) - SL_INDEX_COUNT_SHIFT)) - 1 : size;
+  return size >= SMALL_BLOCK_SIZE ? size + (1UL << (tlsf_fls(size) - SL_INDEX_COUNT_SHIFT)) - 1 : size;
 }
 
 /*
@@ -281,9 +281,9 @@ static inline void mapping_insert(size_t size, unsigned int *fli, unsigned int *
     fl = 0;
     sl = (unsigned int)size / (SMALL_BLOCK_SIZE / SL_INDEX_COUNT);
   } else {
-    fl = fls(size);
-    sl = (unsigned int)(size >> (fl - SL_INDEX_COUNT_SHIFT)) ^
-      (1UL << SL_INDEX_COUNT_SHIFT);
+    fl = tlsf_fls(size);
+    sl = (unsigned int)((size >> (fl - SL_INDEX_COUNT_SHIFT)) ^
+      (1UL << SL_INDEX_COUNT_SHIFT));
     fl -= (FL_INDEX_SHIFT - 1);
   }
   ASSERT(fl < FL_INDEX_COUNT, "Wrong fl index count");
@@ -309,14 +309,14 @@ static block_t search_suitable_block(tlsf_t t, unsigned int *fli, unsigned int *
     if (!fl_map)
       return 0;
 
-    *fli = fl = ffs(fl_map);
+    *fli = fl = tlsf_ffs(fl_map);
     ASSERT(fl < FL_INDEX_COUNT, "Wrong fl index count");
 
     sl_map = t->sl_bitmap[fl];
   }
   ASSERT(sl_map, "Second level bitmap is null");
 
-  *sli = sl = ffs(sl_map);
+  *sli = sl = tlsf_ffs(sl_map);
   ASSERT(sl < SL_INDEX_COUNT, "Wrong sl index count");
 
   // Return the first block in the free list.
