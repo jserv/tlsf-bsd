@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
   size_t spacelen = blk_max * num_blks;
   t = tlsf_create(map, 0, &spacelen);
 
-  void** blk_array = (void**)calloc(num_blks, sizeof(unsigned char *));
+  void** blk_array = (void**)calloc(num_blks, sizeof(void*));
   assert(blk_array);
 
   struct timespec start, end;
