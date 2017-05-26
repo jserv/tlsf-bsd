@@ -96,16 +96,6 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
   }
 }
 
-struct alloc_desc {
-  /* Generic fields. */
-  int loops;
-  size_t blk_min;
-  size_t blk_max;
-  void **blk_array;
-  size_t num_blks;
-  bool clear;
-};
-
 static void* map(size_t* min_size, void* user) {
   size_t spacelen = *(size_t*)user;
   *min_size += spacelen;
