@@ -328,8 +328,8 @@ static void remove_free_block(tlsf_t t, block_t block, unsigned int fl, unsigned
   ASSERT(fl < FL_INDEX_COUNT, "Wrong fl index count");
   ASSERT(sl < SL_INDEX_COUNT, "Wrong sl index count");
 
-  block_t prev = block->prev_free;
-  block_t next = block->next_free;
+  const block_t prev = block->prev_free;
+  const block_t next = block->next_free;
   ASSERT(prev, "prev_free field can not be null");
   ASSERT(next, "next_free field can not be null");
   next->prev_free = prev;
@@ -358,7 +358,7 @@ static void remove_free_block(tlsf_t t, block_t block, unsigned int fl, unsigned
 
 // Insert a free block into the free block list.
 static void insert_free_block(tlsf_t t, block_t block, unsigned int fl, unsigned int sl) {
-  block_t current = t->blocks[fl][sl];
+  const block_t current = t->blocks[fl][sl];
   ASSERT(current, "free list cannot have a null entry");
   ASSERT(block, "cannot insert a null entry into the free list");
   block->next_free = current;
@@ -398,7 +398,7 @@ static void block_insert(tlsf_t t, block_t block) {
 // Split a block into two, the second of which is free.
 static block_t block_split(block_t block, size_t size) {
   // Calculate the amount of space left in the remaining block.
-  block_t remaining = OFFSET_TO_BLOCK(block_to_ptr(block), size - BLOCK_OVERHEAD);
+  const block_t remaining = OFFSET_TO_BLOCK(block_to_ptr(block), size - BLOCK_OVERHEAD);
 
   const size_t remain_size = block_size(block) - (size + BLOCK_OVERHEAD);
 
@@ -545,7 +545,7 @@ static void remove_pool(tlsf_t t, block_t block) {
 
 tlsf_t tlsf_create(tlsf_map_t map, tlsf_unmap_t unmap, void* user) {
   ASSERT(map, "map must not be null");
-  size_t minsize = TLSF_SIZE + POOL_OVERHEAD + BLOCK_SIZE_MIN;
+  const size_t minsize = TLSF_SIZE + POOL_OVERHEAD + BLOCK_SIZE_MIN;
   size_t size = minsize;
   void* mem = map(&size, user);
   ASSERT(mem, "no memory available");
