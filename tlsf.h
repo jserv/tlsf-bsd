@@ -59,6 +59,12 @@
 // Maximum allocation size
 #define TLSF_MAX_SIZE  ((1UL << TLSF_MAX_SHIFT) - sizeof (size_t))
 
+// Flags
+#define TLSF_DEFAULT 0
+#define TLSF_NOMAP   1
+#define TLSF_ZERO    2
+#define TLSF_INPLACE 4
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -70,10 +76,21 @@ typedef void  (*tlsf_unmap_t)(void* mem, size_t size, void* user);
 
 tlsf_t tlsf_create(tlsf_map_t map, tlsf_unmap_t unmap, void* user);
 void   tlsf_destroy(tlsf_t t);
-void*  tlsf_malloc(tlsf_t t, size_t size);
-void*  tlsf_calloc(tlsf_t t, size_t size);
-void*  tlsf_realloc(tlsf_t t, void* mem, size_t size);
 void   tlsf_free(tlsf_t t, void* mem);
+void*  tlsf_mallocx(tlsf_t t, size_t size, int flags);
+void*  tlsf_reallocx(tlsf_t t, void* mem, size_t size, int flags);
+
+static inline void* tlsf_malloc(tlsf_t t, size_t size) {
+  return tlsf_mallocx(t, size, TLSF_DEFAULT);
+}
+
+static inline void* tlsf_calloc(tlsf_t t, size_t size) {
+  return tlsf_mallocx(t, size, TLSF_ZERO);
+}
+
+static inline void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
+  return tlsf_reallocx(t, mem, size, TLSF_DEFAULT);
+}
 
 #ifdef TLSF_STATS
 typedef struct {

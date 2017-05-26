@@ -590,11 +590,15 @@ void tlsf_destroy(tlsf_t t) {
   }
 }
 
-void* tlsf_malloc(tlsf_t t, size_t size) {
+void* tlsf_mallocx(tlsf_t t, size_t size, int flags) {
+  ASSERT((flags & ~(TLSF_ZERO | TLSF_NOMAP)) == 0, "Invalid flags");
+
   size = adjust_size(size);
 
   block_t block = block_locate_free(t, size);
   if (!block) {
+    if (flags & TLSF_NOMAP)
+      return 0;
     size_t minsize = POOL_OVERHEAD + BLOCK_OVERHEAD + round_block_size(size);
     size_t memsize = minsize;
     void* mem = t->map(&memsize, t->user);
@@ -612,7 +616,11 @@ void* tlsf_malloc(tlsf_t t, size_t size) {
 
   block_trim_free(t, block, size);
   block_set_free(block, false);
-  return block_to_ptr(block);
+
+  void* p = block_to_ptr(block);
+  if (flags & TLSF_ZERO)
+    memset(p, 0, size);
+  return p;
 }
 
 void tlsf_free(tlsf_t t, void* mem) {
@@ -649,7 +657,9 @@ void tlsf_free(tlsf_t t, void* mem) {
  * - an extended buffer size will leave the newly-allocated area with
  *   contents undefined
  */
-void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
+void* tlsf_reallocx(tlsf_t t, void* mem, size_t size, int flags) {
+  ASSERT((flags & ~(TLSF_ZERO | TLSF_NOMAP | TLSF_INPLACE)) == 0, "Invalid flags");
+
   // Zero-size requests are treated as free.
   if (mem && size == 0) {
     tlsf_free(t, mem);
@@ -658,7 +668,7 @@ void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
 
   // Requests with NULL pointers are treated as malloc.
   if (!mem)
-    return tlsf_malloc(t, size);
+    return tlsf_mallocx(t, size, flags & (TLSF_ZERO | TLSF_NOMAP));
 
   block_t block = block_from_ptr(mem);
   block_t next = block_next(block);
@@ -674,9 +684,13 @@ void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
    * block, does not offer enough space, we must reallocate and copy.
    */
   if (size > cursize && (!block_is_free(next) || size > combined)) {
-    void* p = tlsf_malloc(t, size);
+    if (flags & TLSF_INPLACE)
+      return 0;
+    char* p = (char*)tlsf_mallocx(t, size, flags & (TLSF_NOMAP | TLSF_NOMAP));
     if (p) {
       memcpy(p, mem, cursize);
+      if (flags & TLSF_ZERO)
+        memset(p + cursize, 0, size - cursize);
       tlsf_free(t, mem);
     }
     return p;
@@ -686,18 +700,13 @@ void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
   if (size > cursize) {
     block_merge_next(t, block);
     block_set_prev_free(block_next(block), false);
+    if (flags & TLSF_ZERO)
+      memset((char*)mem + cursize, 0, size - cursize);
   }
 
   // Trim the resulting block and return the original pointer.
   block_trim_used(t, block, size);
   return mem;
-}
-
-void* tlsf_calloc(tlsf_t t, size_t size) {
-  void* p = tlsf_malloc(t, size);
-  if (p)
-    memset(p, 0, size);
-  return p;
 }
 
 #ifdef TLSF_STATS
