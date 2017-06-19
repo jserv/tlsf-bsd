@@ -1,7 +1,11 @@
 # tlsf
+
 Two-Level Segregated Fit memory allocator implementation.
 Written by Matthew Conte (matt@baisoku.org).
+Maintained by Daniel Mendler (mail@daniel-mendler.de).
 Released under the BSD license.
+This code was based on the TLSF 1.4 spec and documentation found at http://www.gii.upv.es/tlsf/main/docs
+It also leverages the TLSF 2.0 improvement to shrink the per-block overhead from 8 to 4 bytes.
 
 Features
 --------
@@ -16,14 +20,6 @@ Caveats
 -------
   * Currently, assumes architecture can make 4-byte aligned accesses
   * Not designed to be thread safe; the user must provide this
-
-Notes
------
-This code was based on the TLSF 1.4 spec and documentation found at:
-
-	http://www.gii.upv.es/tlsf/main/docs
-
-It also leverages the TLSF 2.0 improvement to shrink the per-block overhead from 8 to 4 bytes.
 
 History
 -------

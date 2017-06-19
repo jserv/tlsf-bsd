@@ -2,9 +2,9 @@
 #define _TLSF_H
 
 /*
- * Two Level Segregated Fit memory allocator, version 3.1.
- * Written by Matthew Conte
- *  http://tlsf.baisoku.org
+ * Two Level Segregated Fit memory allocator.
+ * Written by Matthew Conte.
+ * Maintained by Daniel Mendler.
  *
  * Based on the original documentation by Miguel Masmano:
  *  http://www.gii.upv.es/tlsf/main/docs
@@ -13,6 +13,7 @@
  * of the document, therefore no GPL restrictions apply.
  *
  * Copyright (c) 2006-2016, Matthew Conte
+ * Copyright (c) 2017, Daniel Mendler
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
