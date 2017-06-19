@@ -1,4 +1,4 @@
-# tlsf
+# tlsf: Two-Level Segregated Fit Memory Allocator
 
 Two-Level Segregated Fit memory allocator implementation written by Matthew Conte (matt@baisoku.org) and maintained by Daniel Mendler (mail@daniel-mendler.de).
 This code was based on the TLSF 1.4 spec and documentation found at http://www.gii.upv.es/tlsf/main/docs
