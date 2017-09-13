@@ -89,16 +89,16 @@
 #endif
 
 // This code has been tested on 32- and 64-bit (LP/LLP) architectures.
-_Static_assert(sizeof(int) == 4, "Integer must be 32 bit");
-_Static_assert(sizeof(size_t) * 8 == __WORDSIZE, "size_t must have __WORDSIZE bits");
-_Static_assert(sizeof(size_t) == 4 || sizeof (size_t) == 8, "size_t must be 32 or 64 bit");
-_Static_assert(sizeof(unsigned int) * 8 >= SL_INDEX_COUNT, "SL_INDEX_COUNT must be <= number of bits in sl_bitmap's storage type.");
-_Static_assert(ALIGN_SIZE == SMALL_BLOCK_SIZE / SL_INDEX_COUNT, "Sizes are not properly set");
-_Static_assert(BLOCK_SIZE_MAX == TLSF_MAX_SIZE + BLOCK_OVERHEAD, "Max allocation size is wrong");
+static_assert(sizeof(int) == 4, "Integer must be 32 bit");
+static_assert(sizeof(size_t) * 8 == __WORDSIZE, "size_t must have __WORDSIZE bits");
+static_assert(sizeof(size_t) == 4 || sizeof (size_t) == 8, "size_t must be 32 or 64 bit");
+static_assert(sizeof(unsigned int) * 8 >= SL_INDEX_COUNT, "SL_INDEX_COUNT must be <= number of bits in sl_bitmap's storage type.");
+static_assert(ALIGN_SIZE == SMALL_BLOCK_SIZE / SL_INDEX_COUNT, "Sizes are not properly set");
+static_assert(BLOCK_SIZE_MAX == TLSF_MAX_SIZE + BLOCK_OVERHEAD, "Max allocation size is wrong");
 
 // We have to use size_t bitmaps if we want to support larger blocks.
-_Static_assert(FL_INDEX_COUNT <= 32, "Index too large");
-_Static_assert(SL_INDEX_COUNT <= 32, "Index too large");
+static_assert(FL_INDEX_COUNT <= 32, "Index too large");
+static_assert(SL_INDEX_COUNT <= 32, "Index too large");
 
 /*
  * Data structures and associated constants.
