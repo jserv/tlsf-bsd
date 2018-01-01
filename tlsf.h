@@ -41,12 +41,9 @@
 
 #include <stddef.h>
 
-// Ensure that __WORDSIZE is defined
+// musl doesn't define __WORDSIZE
 #ifndef __WORDSIZE
-#  include <sys/reg.h> // needed by musl
-#  ifndef __WORDSIZE
-#    error __WORDSIZE is not defined
-#  endif
+#  define __WORDSIZE (8 * __SIZEOF_LONG__)
 #endif
 
 #if __WORDSIZE == 64
