@@ -79,25 +79,25 @@ void*  tlsf_mallocx(tlsf_t t, size_t size, int flags);
 void*  tlsf_reallocx(tlsf_t t, void* mem, size_t size, int flags);
 
 static inline void* tlsf_malloc(tlsf_t t, size_t size) {
-  return tlsf_mallocx(t, size, TLSF_DEFAULT);
+    return tlsf_mallocx(t, size, TLSF_DEFAULT);
 }
 
 static inline void* tlsf_calloc(tlsf_t t, size_t size) {
-  return tlsf_mallocx(t, size, TLSF_ZERO);
+    return tlsf_mallocx(t, size, TLSF_ZERO);
 }
 
 static inline void* tlsf_realloc(tlsf_t t, void* mem, size_t size) {
-  return tlsf_reallocx(t, mem, size, TLSF_DEFAULT);
+    return tlsf_reallocx(t, mem, size, TLSF_DEFAULT);
 }
 
 #ifdef TLSF_STATS
 typedef struct {
-  size_t free_size;
-  size_t used_size;
-  size_t total_size;
-  size_t pool_count;
-  size_t malloc_count;
-  size_t free_count;
+    size_t free_size;
+    size_t used_size;
+    size_t total_size;
+    size_t pool_count;
+    size_t malloc_count;
+    size_t free_count;
 } tlsf_stats_t;
 
 const tlsf_stats_t* tlsf_stats(tlsf_t t);
