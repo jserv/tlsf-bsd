@@ -144,17 +144,23 @@ static const size_t block_header_prev_free_bit = 1 << 1;
  */
 static const size_t block_header_overhead = sizeof(size_t);
 
+/*
+ * The size of the block header that overlaps the previous block,
+ * namely the size of prev_phys_block field.
+ */
+static const size_t block_header_overlap = sizeof(block_header_t *);
+
 /* User data starts directly after the size field in a used block. */
 static const size_t block_start_offset =
     offsetof(block_header_t, size) + sizeof(size_t);
 
 /*
  * A free block must be large enough to store its header minus the size of
- * the prev_phys_block field, and no larger than the number of addressable
+ * the metadata field, and no larger than the number of addressable
  * bits for FL_INDEX.
  */
 static const size_t block_size_min =
-    sizeof(block_header_t) - sizeof(block_header_t *);
+    sizeof(block_header_t) - sizeof(size_t);  // FIXME: metadata
 static const size_t block_size_max = tlsf_cast(size_t, 1) << FL_INDEX_MAX;
 
 /* The TLSF control structure. */
@@ -236,7 +242,8 @@ static void *block_to_ptr(const block_header_t *block)
 /* Return location of next block after block of given size. */
 static block_header_t *offset_to_block(const void *ptr, ptrdiff_t size)
 {
-    return tlsf_cast(block_header_t *, tlsf_cast(ptrdiff_t, ptr) + size);
+    return tlsf_cast(block_header_t *,
+                     tlsf_cast(ptrdiff_t, ptr) + size - block_header_overlap);
 }
 
 /* Return location of previous block. */
@@ -249,8 +256,8 @@ static block_header_t *block_prev(const block_header_t *block)
 /* Return location of next existing block. */
 static block_header_t *block_next(const block_header_t *block)
 {
-    block_header_t *next = offset_to_block(
-        block_to_ptr(block), block_size(block) - block_header_overhead);
+    block_header_t *next =
+        offset_to_block(block_to_ptr(block), block_size(block));
     tlsf_assert(!block_is_last(block));
     return next;
 }
@@ -461,8 +468,7 @@ static int block_can_split(block_header_t *block, size_t size)
 static block_header_t *block_split(block_header_t *block, size_t size)
 {
     /* Calculate the amount of space left in the remaining block. */
-    block_header_t *remaining =
-        offset_to_block(block_to_ptr(block), size - block_header_overhead);
+    block_header_t *remaining = offset_to_block(block_to_ptr(block), size);
 
     const size_t remain_size =
         block_size(block) - (size + block_header_overhead);
@@ -555,6 +561,8 @@ static void block_trim_used(control_t *control,
     }
 }
 
+/* If possible, create a trailing free block after trimming given block by size
+ */
 static block_header_t *block_trim_free_leading(control_t *control,
                                                block_header_t *block,
                                                size_t size)
@@ -736,7 +744,7 @@ static void default_walker(void *ptr, size_t size, int used, void *user)
 void tlsf_walk_pool(pool_t pool, tlsf_walker walker, void *user)
 {
     tlsf_walker pool_walker = walker ? walker : default_walker;
-    block_header_t *block = offset_to_block(pool, -(int)block_header_overhead);
+    block_header_t *block = offset_to_block(pool, 0);
 
     while (block && !block_is_last(block)) {
         pool_walker(block_to_ptr(block), block_size(block),
@@ -839,7 +847,7 @@ pool_t tlsf_add_pool(tlsf_t tlsf, void *mem, size_t bytes)
      * so that the prev_phys_block field falls outside of the pool -
      * it will never be used.
     */
-    block = offset_to_block(mem, -(ptrdiff_t)block_header_overhead);
+    block = offset_to_block(mem, 0);
     block_set_size(block, pool_bytes);
     block_set_free(block);
     block_set_prev_used(block);
@@ -857,7 +865,7 @@ pool_t tlsf_add_pool(tlsf_t tlsf, void *mem, size_t bytes)
 void tlsf_remove_pool(tlsf_t tlsf, pool_t pool)
 {
     control_t *control = tlsf_cast(control_t *, tlsf);
-    block_header_t *block = offset_to_block(pool, -(int)block_header_overhead);
+    block_header_t *block = offset_to_block(pool, 0);
 
     int fl = 0, sl = 0;
 
