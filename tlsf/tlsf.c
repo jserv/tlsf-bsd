@@ -637,7 +637,7 @@ static void control_construct(control_t *control)
 /*
  * Debugging utilities.
  */
-#ifdef TSLF_CONFIG_DEBUG
+#ifdef TLSF_CONFIG_DEBUG
 
 typedef struct integrity_t {
     int prev_status;
