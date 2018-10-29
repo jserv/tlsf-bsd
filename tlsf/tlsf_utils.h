@@ -26,7 +26,7 @@
 ** architecture. There is no reliable portable method at compile-time.
 */
 #if defined(__alpha__) || defined(__ia64__) || defined(__x86_64__) || \
-    defined(_WIN64) || defined(__LP64__) || defined(__LLP64__) || \
+    defined(_WIN64) || defined(__LP64__) || defined(__LLP64__) ||     \
     defined(__aarch64__)
 #define TLSF_64BIT
 #endif
@@ -54,7 +54,7 @@ static inline int __log2(uint32_t x)
  */
 static inline int tlsf_ffs(unsigned int word)
 {
-    return __log2(word & (uint32_t)(-(uint32_t) word));
+    return __log2(word & (uint32_t)(-(uint32_t)word));
 }
 
 static inline int tlsf_fls(unsigned int word)
@@ -64,7 +64,7 @@ static inline int tlsf_fls(unsigned int word)
 }
 
 #elif defined(_MSC_VER) && (_MSC_VER >= 1400) && \
-      (defined(_M_IX86) || defined(_M_X64))
+    (defined(_M_IX86) || defined(_M_X64))
 /* Microsoft Visual C++ support on x86/X64 architectures. */
 
 #include <intrin.h>
