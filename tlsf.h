@@ -22,7 +22,7 @@ struct tlsf_block_ {
     // Points to the previous block.
     // This field is only valid if the previous block is free and
     // is actually stored at the end of the previous block.
-    tlsf_block* prev_block;
+    tlsf_block* prev;
 
     // Size and block bits
     size_t header;

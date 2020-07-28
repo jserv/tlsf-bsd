@@ -18,7 +18,7 @@
 #define BLOCK_BIT_PREV_FREE ((size_t)2)
 #define BLOCK_BITS          (BLOCK_BIT_FREE | BLOCK_BIT_PREV_FREE)
 
-// A free block must be large enough to store its header minus the size of the prev_block field.
+// A free block must be large enough to store its header minus the size of the prev field.
 #define BLOCK_OVERHEAD   (sizeof (size_t))
 #define BLOCK_SIZE_MIN   (sizeof (tlsf_block) - sizeof (tlsf_block*))
 #define BLOCK_SIZE_MAX   ((size_t)1 << (FL_MAX - 1))
@@ -59,12 +59,8 @@ static inline size_t block_size(const tlsf_block* block) {
 }
 
 static inline void block_set_size(tlsf_block* block, size_t size) {
-    ASSERT(!(size & BLOCK_BITS), "Invalid size");
+    ASSERT(!(size % ALIGN_SIZE), "invalid size");
     block->header = size | (block->header & BLOCK_BITS);
-}
-
-static inline bool block_is_last(const tlsf_block* block) {
-    return !block_size(block);
 }
 
 static inline bool block_is_free(const tlsf_block* block) {
@@ -96,20 +92,20 @@ static inline tlsf_block* block_from_payload(void* ptr) {
 // Return location of previous block.
 static inline tlsf_block* block_prev(const tlsf_block* block) {
     ASSERT(block_is_prev_free(block), "previous block must be free");
-    return block->prev_block;
+    return block->prev;
 }
 
 // Return location of next existing block.
 static inline tlsf_block* block_next(tlsf_block* block) {
     tlsf_block* next = to_block(block->payload + block_size(block) - BLOCK_OVERHEAD);
-    ASSERT(!block_is_last(block), "block is last");
+    ASSERT(block_size(block), "block is last");
     return next;
 }
 
 // Link a new block with its neighbor, return the neighbor.
 static inline tlsf_block* block_link_next(tlsf_block* block) {
     tlsf_block* next = block_next(block);
-    next->prev_block = block;
+    next->prev = block;
     return next;
 }
 
@@ -167,8 +163,8 @@ static tlsf_block* search_suitable_block(tlsf* t, uint32_t *fl, uint32_t *sl) {
         ASSERT(*fl < FL_COUNT, "wrong first level");
 
         sl_map = t->sl_bm[*fl];
+        ASSERT(sl_map, "second level bitmap is null");
     }
-    ASSERT(sl_map, "second level bitmap is null");
 
     *sl = bitmap_ffs(sl_map);
     ASSERT(*sl < SL_COUNT, "wrong second level");
@@ -243,7 +239,7 @@ static tlsf_block* block_split(tlsf_block* block, size_t size) {
     ASSERT(block_size(block) == remaining_size + size + BLOCK_OVERHEAD, "remaining block size is wrong");
     ASSERT(remaining_size >= BLOCK_SIZE_MIN, "block split with invalid size");
     remaining->header = remaining_size;
-    ASSERT(!(remaining_size & BLOCK_BITS), "invalid block size");
+    ASSERT(!(remaining_size % ALIGN_SIZE), "invalid block size");
     block_set_free(remaining, true);
     block_set_size(block, size);
     return remaining;
@@ -251,7 +247,7 @@ static tlsf_block* block_split(tlsf_block* block, size_t size) {
 
 // Absorb a free block's storage into an adjacent previous free block.
 static tlsf_block* block_absorb(tlsf_block* prev, tlsf_block* block) {
-    ASSERT(!block_is_last(prev), "previous block can't be last");
+    ASSERT(block_size(prev), "previous block can't be last");
     // Note: Leaves flags untouched.
     prev->header += block_size(block) + BLOCK_OVERHEAD;
     block_link_next(prev);
@@ -275,7 +271,7 @@ static tlsf_block* block_merge_next(tlsf* t, tlsf_block* block) {
     tlsf_block* next = block_next(block);
     ASSERT(next, "next block can't be null");
     if (block_is_free(next)) {
-        ASSERT(!block_is_last(block), "previous block can't be last");
+        ASSERT(block_size(block), "previous block can't be last");
         block_remove(t, next);
         block = block_absorb(block, next);
     }
@@ -300,7 +296,6 @@ static void block_trim_used(tlsf* t, tlsf_block* block, size_t size) {
         // If the next block is free, we must coalesce.
         tlsf_block* remaining = block_split(block, size);
         block_set_prev_free(remaining, false);
-
         remaining = block_merge_next(t, remaining);
         block_insert(t, remaining);
     }
@@ -326,7 +321,7 @@ static void check_sentinel(tlsf* t, tlsf_block* block) {
     (void)t;
     (void)block;
     ASSERT(get_sentinel(t) == block, "not the sentinel");
-    ASSERT(block_is_last(block), "sentinel should be last");
+    ASSERT(!block_size(block), "sentinel should be last");
     ASSERT(!block_is_free(block), "sentinel block should not be free");
 }
 
@@ -352,9 +347,9 @@ static bool grow(tlsf* t, size_t size) {
 
 static void shrink(tlsf* t, tlsf_block* block) {
     check_sentinel(t, block_next(block));
-    size_t size = block_size(block);
+    size_t size = block_size(block),
+        req_size = (char*)block == (char*)t->start - BLOCK_OVERHEAD ? 0 : t->size - size - BLOCK_OVERHEAD;
     ASSERT(t->size >= size, "invalid heap size before shrink");
-    size_t req_size = (char*)block == (char*)t->start - BLOCK_OVERHEAD ? 0 : t->size - size - BLOCK_OVERHEAD;
     t->size = t->resize(t, t->start, t->size, req_size);
     ASSERT(t->size == req_size, "invalid heap size after shrink");
     if (t->size) {
@@ -387,7 +382,7 @@ TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
 }
 
 TLSF_API void tlsf_free(tlsf* t, void* mem) {
-    if (!mem) // to support free after zero size realloc
+    if (!mem)
         return;
 
     tlsf_block* block = block_from_payload(mem);
@@ -397,7 +392,7 @@ TLSF_API void tlsf_free(tlsf* t, void* mem) {
     block = block_merge_prev(t, block);
     block = block_merge_next(t, block);
 
-    if (block_is_last(block_next(block)))
+    if (!block_size(block_next(block)))
         shrink(t, block);
     else
         block_insert(t, block);
@@ -417,8 +412,8 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     tlsf_block* block = block_from_payload(mem);
     tlsf_block* next = block_next(block);
 
-    const size_t cursize = block_size(block);
-    const size_t combined = cursize + block_size(next) + BLOCK_OVERHEAD;
+    size_t cursize = block_size(block),
+        combined = cursize + block_size(next) + BLOCK_OVERHEAD;
     size = adjust_size(size);
 
     ASSERT(!block_is_free(block), "block already marked as free");
@@ -459,9 +454,9 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
 TLSF_API void tlsf_check(tlsf* t) {
     for (uint32_t i = 0; i < FL_COUNT; ++i) {
         for (uint32_t j = 0; j < SL_COUNT; ++j) {
-            const size_t fl_map = t->fl_bm & (1U << i);
-            const size_t sl_list = t->sl_bm[i];
-            const size_t sl_map = sl_list & (1U << j);
+            size_t fl_map = t->fl_bm & (1U << i),
+                sl_list = t->sl_bm[i],
+                sl_map = sl_list & (1U << j);
             tlsf_block* block = t->blocks[i][j];
 
             // Check that first- and second-level lists agree.
