@@ -4,12 +4,12 @@
 
 // All allocation sizes and addresses are aligned.
 #define ALIGN_SIZE  ((size_t)1 << ALIGN_SHIFT)
-#define ALIGN_SHIFT (TLSF_BITS == 64 ? 3 : 2)
+#define ALIGN_SHIFT (sizeof (size_t) == 8 ? 3 : 2)
 
 // First and second level counts
 #define SL_SHIFT 4
 #define SL_COUNT (1U << SL_SHIFT)
-#define FL_MAX   (TLSF_MAX_SHIFT + 1)
+#define FL_MAX   _TLSF_FL_MAX
 #define FL_SHIFT (SL_SHIFT + ALIGN_SHIFT)
 #define FL_COUNT (FL_MAX - FL_SHIFT + 1)
 
@@ -31,15 +31,33 @@
 #  define ASSERT(cond, msg)
 #endif
 
-_Static_assert(sizeof(size_t) * 8 == TLSF_BITS, "size_t must have TLSF_BITS bits");
+typedef struct tlsf_block_ tlsf_block;
+struct tlsf_block_ {
+    // Points to the previous block.
+    // This field is only valid if the previous block is free and
+    // is actually stored at the end of the previous block.
+    tlsf_block* prev;
+
+    // Size and block bits
+    size_t header;
+
+    // Block payload
+    char payload[0];
+
+    // Next and previous free blocks.
+    // These fields are only valid if the corresponding block is free.
+    tlsf_block *next_free, *prev_free;
+};
+
 _Static_assert(sizeof(size_t) == 4 || sizeof (size_t) == 8, "size_t must be 32 or 64 bit");
+_Static_assert(sizeof(size_t) == sizeof (void*), "size_t must equal pointer size");
 _Static_assert(ALIGN_SIZE == BLOCK_SIZE_SMALL / SL_COUNT, "sizes are not properly set");
 _Static_assert(BLOCK_SIZE_MIN < BLOCK_SIZE_SMALL, "min allocation size is wrong");
 _Static_assert(BLOCK_SIZE_MAX == TLSF_MAX_SIZE + BLOCK_OVERHEAD, "max allocation size is wrong");
 _Static_assert(FL_COUNT <= 32, "index too large");
 _Static_assert(SL_COUNT <= 32, "index too large");
-_Static_assert(FL_COUNT == TLSF_FL_COUNT, "invalid level configuration");
-_Static_assert(SL_COUNT == TLSF_SL_COUNT, "invalid level configuration");
+_Static_assert(FL_COUNT == _TLSF_FL_COUNT, "invalid level configuration");
+_Static_assert(SL_COUNT == _TLSF_SL_COUNT, "invalid level configuration");
 
 static inline uint32_t bitmap_ffs(uint32_t x) {
     uint32_t i = (uint32_t)__builtin_ffs((int32_t)x);
@@ -49,7 +67,7 @@ static inline uint32_t bitmap_ffs(uint32_t x) {
 
 static inline uint32_t log2floor(size_t x) {
     ASSERT(x > 0, "log2 of zero");
-    return TLSF_BITS == 64
+    return sizeof (size_t) == 8
         ? (uint32_t)(63 - (uint32_t)__builtin_clzll((unsigned long long)x))
         : (uint32_t)(31 - (uint32_t)__builtin_clzl((unsigned long)x));
 }
@@ -122,7 +140,6 @@ static inline void block_set_free(tlsf_block* block, bool free) {
 // Adjust allocation size to be word aligned, and no smaller than internal minimum.
 static inline size_t adjust_size(size_t size) {
     size = align_up(size);
-    ASSERT(size <= TLSF_MAX_SIZE, "size is too large");
     return size < BLOCK_SIZE_MIN ? BLOCK_SIZE_MIN : size;
 }
 
@@ -151,10 +168,10 @@ static tlsf_block* search_suitable_block(tlsf* t, uint32_t *fl, uint32_t *sl) {
     ASSERT(*sl < SL_COUNT, "wrong second level");
 
     // Search for a block in the list associated with the given fl/sl index.
-    uint32_t sl_map = t->sl_bm[*fl] & (~0U << *sl);
+    uint32_t sl_map = t->sl[*fl] & (~0U << *sl);
     if (!sl_map) {
         // No block exists. Search in the next largest first-level list.
-        uint32_t fl_map = t->fl_bm & (uint32_t)(~(uint64_t)0 << (*fl + 1));
+        uint32_t fl_map = t->fl & (uint32_t)(~(uint64_t)0 << (*fl + 1));
         // No free blocks available, memory has been exhausted.
         if (!fl_map)
             return 0;
@@ -162,14 +179,14 @@ static tlsf_block* search_suitable_block(tlsf* t, uint32_t *fl, uint32_t *sl) {
         *fl = bitmap_ffs(fl_map);
         ASSERT(*fl < FL_COUNT, "wrong first level");
 
-        sl_map = t->sl_bm[*fl];
+        sl_map = t->sl[*fl];
         ASSERT(sl_map, "second level bitmap is null");
     }
 
     *sl = bitmap_ffs(sl_map);
     ASSERT(*sl < SL_COUNT, "wrong second level");
 
-    return t->blocks[*fl][*sl];
+    return t->block[*fl][*sl];
 }
 
 // Remove a free block from the free list.
@@ -185,23 +202,23 @@ static void remove_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t 
         prev->next_free = next;
 
     // If this block is the head of the free list, set new head.
-    if (t->blocks[fl][sl] == block) {
-        t->blocks[fl][sl] = next;
+    if (t->block[fl][sl] == block) {
+        t->block[fl][sl] = next;
 
         // If the new head is null, clear the bitmap.
         if (!next) {
-            t->sl_bm[fl] &= ~(1U << sl);
+            t->sl[fl] &= ~(1U << sl);
 
             // If the second bitmap is now empty, clear the fl bitmap.
-            if (!t->sl_bm[fl])
-                t->fl_bm &= ~(1U << fl);
+            if (!t->sl[fl])
+                t->fl &= ~(1U << fl);
         }
     }
 }
 
 // Insert a free block into the free block list.
 static void insert_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t sl) {
-    tlsf_block* current = t->blocks[fl][sl];
+    tlsf_block* current = t->block[fl][sl];
     ASSERT(block, "cannot insert a null entry into the free list");
     block->next_free = current;
     block->prev_free = 0;
@@ -213,9 +230,9 @@ static void insert_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t 
      * Insert the new block at the head of the list, and mark the first-
      * and second-level bitmaps appropriately.
      */
-    t->blocks[fl][sl] = block;
-    t->fl_bm |= 1U << fl;
-    t->sl_bm[fl] |= 1U << sl;
+    t->block[fl][sl] = block;
+    t->fl |= 1U << fl;
+    t->sl[fl] |= 1U << sl;
 }
 
 // Remove a given block from the free list.
@@ -367,6 +384,8 @@ TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
 
 TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
     size = adjust_size(size);
+    if (size > TLSF_MAX_SIZE)
+        return 0;
 
     tlsf_block* block = block_find_free(t, size);
     if (!block) {
@@ -415,6 +434,8 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     size_t cursize = block_size(block),
         combined = cursize + block_size(next) + BLOCK_OVERHEAD;
     size = adjust_size(size);
+    if (size > TLSF_MAX_SIZE)
+        return 0;
 
     ASSERT(!block_is_free(block), "block already marked as free");
 
@@ -454,10 +475,10 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
 TLSF_API void tlsf_check(tlsf* t) {
     for (uint32_t i = 0; i < FL_COUNT; ++i) {
         for (uint32_t j = 0; j < SL_COUNT; ++j) {
-            size_t fl_map = t->fl_bm & (1U << i),
-                sl_list = t->sl_bm[i],
+            size_t fl_map = t->fl & (1U << i),
+                sl_list = t->sl[i],
                 sl_map = sl_list & (1U << j);
-            tlsf_block* block = t->blocks[i][j];
+            tlsf_block* block = t->block[i][j];
 
             // Check that first- and second-level lists agree.
             if (!fl_map)

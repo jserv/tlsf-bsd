@@ -8,40 +8,17 @@
 #  define TLSF_API
 #endif
 
-#define TLSF_FL_COUNT  32
-#define TLSF_SL_COUNT  16
-#define TLSF_BITS      (8 * sizeof (void*))
-#define TLSF_MAX_SHIFT (TLSF_BITS == 64 ? 37 : 29)
-#define TLSF_MAX_SIZE  (((size_t)1 << TLSF_MAX_SHIFT) - sizeof (size_t))
+#define _TLSF_FL_COUNT 32
+#define _TLSF_SL_COUNT 16
+#define _TLSF_FL_MAX   (sizeof (size_t) == 8 ? 38 : 30)
+#define TLSF_MAX_SIZE  (((size_t)1 << (_TLSF_FL_MAX - 1)) - sizeof (size_t))
 
 typedef struct tlsf_ tlsf;
-typedef struct tlsf_block_ tlsf_block;
 typedef size_t (*tlsf_resize)(tlsf*, void*, size_t, size_t);
 
-struct tlsf_block_ {
-    // Points to the previous block.
-    // This field is only valid if the previous block is free and
-    // is actually stored at the end of the previous block.
-    tlsf_block* prev;
-
-    // Size and block bits
-    size_t header;
-
-    // Block payload
-    char payload[0];
-
-    // Next and previous free blocks.
-    // These fields are only valid if the corresponding block is free.
-    tlsf_block *next_free, *prev_free;
-};
-
 struct tlsf_ {
-    // Bitmaps for free lists.
-    uint32_t fl_bm, sl_bm[TLSF_FL_COUNT];
-
-    // Head of free lists.
-    tlsf_block* blocks[TLSF_FL_COUNT][TLSF_SL_COUNT];
-
+    uint32_t fl, sl[_TLSF_FL_COUNT];
+    struct tlsf_block_* block[_TLSF_FL_COUNT][_TLSF_SL_COUNT];
     tlsf_resize resize;
     void*       start;
     size_t      size;
