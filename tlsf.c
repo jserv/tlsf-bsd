@@ -51,9 +51,11 @@ static inline uint32_t bitmap_ffs(uint32_t x) {
     return i - 1U;
 }
 
-static inline uint32_t log2_floor(size_t x) {
+static inline uint32_t log2floor(size_t x) {
     ASSERT(x > 0, "log2 of zero");
-    return (uint32_t)(TLSF_BITS - 1 - (uint32_t)__builtin_clzll(x));
+    return TLSF_BITS == 64
+        ? (uint32_t)(63 - (uint32_t)__builtin_clzll((unsigned long long)x))
+        : (uint32_t)(31 - (uint32_t)__builtin_clzl((unsigned long)x));
 }
 
 static inline size_t block_size(const tlsf_block* block) {
@@ -134,16 +136,17 @@ static inline size_t adjust_size(size_t size) {
 
 // Rounds up to the next block size
 static inline size_t round_block_size(size_t size) {
-    return size >= BLOCK_SIZE_SMALL ? size + ((size_t)1 << (log2_floor(size) - SL_SHIFT)) - 1 : size;
+    size_t t = ((size_t)1 << (log2floor(size) - SL_SHIFT)) - 1;
+    return size >= BLOCK_SIZE_SMALL ? (size + t) & ~t : size;
 }
 
-static inline void mapping_insert(size_t size, uint32_t *fl, uint32_t *sl) {
+static inline void mapping(size_t size, uint32_t *fl, uint32_t *sl) {
     if (size < BLOCK_SIZE_SMALL) {
         // Store small blocks in first list.
         *fl = 0;
         *sl = (uint32_t)size / (BLOCK_SIZE_SMALL / SL_COUNT);
     } else {
-        uint32_t t = log2_floor(size);
+        uint32_t t = log2floor(size);
         *sl = (uint32_t)(size >> (t - SL_SHIFT)) ^ SL_COUNT;
         *fl = t - FL_SHIFT + 1;
     }
@@ -226,14 +229,14 @@ static void insert_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t 
 // Remove a given block from the free list.
 static void block_remove(tlsf* t, tlsf_block* block) {
     uint32_t fl, sl;
-    mapping_insert(block_size(block), &fl, &sl);
+    mapping(block_size(block), &fl, &sl);
     remove_free_block(t, block, fl, sl);
 }
 
 // Insert a given block into the free list.
 static void block_insert(tlsf* t, tlsf_block* block) {
     uint32_t fl, sl;
-    mapping_insert(block_size(block), &fl, &sl);
+    mapping(block_size(block), &fl, &sl);
     insert_free_block(t, block, fl, sl);
 }
 
@@ -310,7 +313,7 @@ static void block_trim_used(tlsf* t, tlsf_block* block, size_t size) {
 // Find a free block with an appropriate size.
 static tlsf_block* block_find_free(tlsf* t, size_t size) {
     uint32_t fl, sl;
-    mapping_insert(round_block_size(size), &fl, &sl);
+    mapping(round_block_size(size), &fl, &sl);
     tlsf_block* block = search_suitable_block(t, &fl, &sl);
     if (block) {
         ASSERT(block_size(block) >= size, "insufficient block size");
@@ -483,7 +486,7 @@ void tlsf_check(tlsf* t) {
                 CHECK(block_is_prev_free(block_next(block)), "block should be free");
                 CHECK(block_size(block) >= BLOCK_SIZE_MIN, "block not minimum size");
 
-                mapping_insert(block_size(block), &fl, &sl);
+                mapping(block_size(block), &fl, &sl);
                 CHECK(fl == i && sl == j, "block size indexed in wrong list");
                 block = block->next_free;
             }
