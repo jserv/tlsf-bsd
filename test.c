@@ -26,7 +26,7 @@ static size_t resize(tlsf* t, void* start, size_t old_size, size_t req_size) {
 
     if (req_pages != curr_pages) {
         if (req_pages < curr_pages)
-            madvise((char*)start + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_FREE);
+            madvise((char*)start + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_DONTNEED);
         curr_pages = req_pages;
     }
 
