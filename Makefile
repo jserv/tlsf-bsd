@@ -16,7 +16,7 @@ test: all
 CFLAGS = \
 	-std=c11 -g -O2 \
 	-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
-	-DTLSF_ASSERT -DTLSF_DEBUG -DTLSF_STATS
+	-DTLSF_ASSERT -DTLSF_CHECK
 LDFLAGS = -lrt
 CFLAGS_TEST = $(CFLAGS) -std=gnu11
 

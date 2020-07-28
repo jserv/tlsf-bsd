@@ -15,7 +15,7 @@
 #include <time.h>
 #include "tlsf.h"
 
-static tlsf_t t;
+static tlsf t;
 
 static void usage(const char *name) {
     printf("run a malloc benchmark.\n"
@@ -70,29 +70,24 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
         if (blk_array[next_idx]) {
             if (rand() % 10 == 0) {
                 /* Insert the newly alloced block into the array at a random point. */
-                blk_array[next_idx] = tlsf_realloc(t, blk_array[next_idx], blk_size);
+                blk_array[next_idx] = tlsf_realloc(&t, blk_array[next_idx], blk_size);
             } else {
-                tlsf_free(t, blk_array[next_idx]);
+                tlsf_free(&t, blk_array[next_idx]);
                 /* Insert the newly alloced block into the array at a random point. */
-                blk_array[next_idx] = tlsf_malloc(t, blk_size);
+                blk_array[next_idx] = tlsf_malloc(&t, blk_size);
             }
         } else {
             /* Insert the newly alloced block into the array at a random point. */
-            blk_array[next_idx] = tlsf_malloc(t, blk_size);
+            blk_array[next_idx] = tlsf_malloc(&t, blk_size);
         }
         if (clear)
             memset(blk_array[next_idx], 0, blk_size);
-
-#ifdef TLSF_STATS
-        if (loops % 100000 == 0)
-            tlsf_printstats(t);
-#endif
     }
 
     /* Free up all allocated blocks. */
     for (size_t i = 0; i < num_blks; i++) {
         if (blk_array[i])
-            tlsf_free(t, blk_array[i]);
+            tlsf_free(&t, blk_array[i]);
     }
 }
 
@@ -134,7 +129,7 @@ int main(int argc, char **argv) {
     }
 
     size_t spacelen = blk_max * num_blks;
-    t = tlsf_create(map, 0, &spacelen);
+    tlsf_init(&t, map, 0, &spacelen);
 
     void** blk_array = (void**)calloc(num_blks, sizeof(void*));
     assert(blk_array);
@@ -158,8 +153,6 @@ int main(int argc, char **argv) {
     struct rusage usage;
     err = getrusage(RUSAGE_SELF, &usage);
     assert(err == 0);
-
-    tlsf_destroy(t);
 
     /* Dump both machine and human readable versions */
     printf("%lu:%lu:%lu:%u:%lu:%.6f: took %.6f s for %lu malloc/free\nbenchmark loops of %lu-%lu bytes.  ~%.3f us per loop\n",

@@ -50,8 +50,8 @@ static void random_test(size_t spacelen, const size_t cap) {
     void** p = (void**)malloc(maxitems * sizeof(void *));
     assert(p);
 
-    tlsf_t t = tlsf_create(tlsf_map, tlsf_unmap, &spacelen);
-    assert(t != NULL);
+    tlsf t;
+    tlsf_init(&t, tlsf_map, tlsf_unmap, &spacelen);
 
     /*
      * Allocate random sizes up to the cap threshold.
@@ -61,19 +61,17 @@ static void random_test(size_t spacelen, const size_t cap) {
     unsigned i = 0;
     while (rest > 0) {
         size_t len = ((size_t)rand() % cap) + 1;
-        p[i] = tlsf_malloc(t, len);
+        p[i] = tlsf_malloc(&t, len);
         assert(p[i]);
         rest -= (int64_t)len;
 
         if (rand() % 10 == 0) {
             len = ((size_t)rand() % cap) + 1;
-            p[i] = tlsf_realloc(t, p[i], len);
+            p[i] = tlsf_realloc(&t, p[i], len);
             assert(p[i]);
         }
 
-#ifdef TLSF_DEBUG
-        tlsf_check(t);
-#endif
+        tlsf_check(&t);
 
         /* Fill with magic (only when testing up to 1MB). */
         uint8_t* data = (uint8_t*)p[i];
@@ -85,10 +83,6 @@ static void random_test(size_t spacelen, const size_t cap) {
             break;
     }
 
-#ifdef TLSF_STATS
-    tlsf_printstats(t);
-#endif
-
     /*
      * Randomly deallocate the memory blocks until all of them are freed.
      * The free space should match the free space after initialisation.
@@ -99,20 +93,13 @@ static void random_test(size_t spacelen, const size_t cap) {
             continue;
         uint8_t* data = (uint8_t*)p[target];
         assert(data[0] == 0xa5);
-        tlsf_free(t, p[target]);
+        tlsf_free(&t, p[target]);
         p[target] = NULL;
         n--;
 
-#ifdef TLSF_DEBUG
-        tlsf_check(t);
-#endif
+        tlsf_check(&t);
     }
 
-#ifdef TLSF_STATT
-    tlsf_printstats(t);
-#endif
-
-    tlsf_destroy(t);
     free(p);
 }
 
@@ -132,7 +119,7 @@ static void random_sizes_test(void) {
     }
 }
 
-static void large_alloc(tlsf_t t, size_t s) {
+static void large_alloc(tlsf* t, size_t s) {
     printf("large alloc %lu\n", s);
     for (size_t d = 0; d < 100 && d < s; ++d) {
         void* p = tlsf_malloc(t, s - d);
@@ -147,30 +134,25 @@ static void large_alloc(tlsf_t t, size_t s) {
         tlsf_free(t, q);
 
         tlsf_free(t, p);
-
-#ifdef TLSF_DEBUG
         tlsf_check(t);
-#endif
     }
 }
 
 static void large_size_test(bool large_pool) {
-    tlsf_t t = tlsf_create(tlsf_map_large, tlsf_unmap_large, large_pool ? (void*)1 : 0);
-    assert(t != NULL);
+    tlsf t;
+    tlsf_init(&t, tlsf_map_large, tlsf_unmap_large, large_pool ? (void*)1 : 0);
 
     size_t s = 1;
     while (s <= TLSF_MAX_SIZE) {
-        large_alloc(t, s);
+        large_alloc(&t, s);
         s *= 2;
     }
 
     s = TLSF_MAX_SIZE;
     while (s > 0) {
-        large_alloc(t, s);
+        large_alloc(&t, s);
         s /= 2;
     }
-
-    tlsf_destroy(t);
 }
 
 int main(void) {
