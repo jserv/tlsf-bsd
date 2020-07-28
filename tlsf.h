@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef TLSF_API
+#  define TLSF_API
+#endif
+
 #define TLSF_FL_COUNT  32
 #define TLSF_SL_COUNT  16
 #define TLSF_BITS      (8 * sizeof (void*))
@@ -43,13 +47,13 @@ struct tlsf_ {
     size_t      size;
 };
 
-void tlsf_init(tlsf*, void*, tlsf_resize);
-void* tlsf_malloc(tlsf*, size_t);
-void* tlsf_realloc(tlsf*, void*, size_t);
-void  tlsf_free(tlsf*, void*);
+TLSF_API void tlsf_init(tlsf*, void*, tlsf_resize);
+TLSF_API void* tlsf_malloc(tlsf*, size_t);
+TLSF_API void* tlsf_realloc(tlsf*, void*, size_t);
+TLSF_API void  tlsf_free(tlsf*, void*);
 
 #ifdef TLSF_CHECK
-void tlsf_check(tlsf*);
+TLSF_API void tlsf_check(tlsf*);
 #else
 static inline void tlsf_check(tlsf* t) { (void)t; }
 #endif

@@ -363,14 +363,14 @@ static void shrink(tlsf* t, tlsf_block* block) {
     }
 }
 
-void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
+TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
     memset(t, 0, sizeof (tlsf));
     t->start = start;
     t->resize = resize;
     ASSERT((size_t)t->start % ALIGN_SIZE == 0, "wrong alignment");
 }
 
-void* tlsf_malloc(tlsf* t, size_t size) {
+TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
     size = adjust_size(size);
 
     tlsf_block* block = block_find_free(t, size);
@@ -386,7 +386,7 @@ void* tlsf_malloc(tlsf* t, size_t size) {
     return block->payload;
 }
 
-void tlsf_free(tlsf* t, void* mem) {
+TLSF_API void tlsf_free(tlsf* t, void* mem) {
     if (!mem) // to support free after zero size realloc
         return;
 
@@ -403,7 +403,7 @@ void tlsf_free(tlsf* t, void* mem) {
         block_insert(t, block);
 }
 
-void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
+TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     // Zero-size requests are treated as free.
     if (mem && !size) {
         tlsf_free(t, mem);
@@ -456,7 +456,7 @@ void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
         }                                                               \
     })
 
-void tlsf_check(tlsf* t) {
+TLSF_API void tlsf_check(tlsf* t) {
     for (uint32_t i = 0; i < FL_COUNT; ++i) {
         for (uint32_t j = 0; j < SL_COUNT; ++j) {
             const size_t fl_map = t->fl_bm & (1U << i);
