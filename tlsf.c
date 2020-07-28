@@ -369,7 +369,7 @@ void* tlsf_malloc(tlsf* t, size_t size) {
 
     tlsf_block* block = block_find_free(t, size);
     if (!block) {
-        size_t minsize = POOL_OVERHEAD + BLOCK_OVERHEAD + round_block_size(size);
+        size_t minsize = POOL_OVERHEAD + round_block_size(size);
         size_t memsize = minsize;
         void* mem = t->map(&memsize, t->user);
         if (!mem)
