@@ -3,14 +3,14 @@
 #include <stdbool.h>
 
 // All allocation sizes and addresses are aligned.
-#define ALIGN_SIZE       ((size_t)1 << ALIGN_SIZE_SHIFT)
-#define ALIGN_SIZE_SHIFT (TLSF_BITS == 64 ? 3 : 2)
+#define ALIGN_SIZE  ((size_t)1 << ALIGN_SHIFT)
+#define ALIGN_SHIFT (TLSF_BITS == 64 ? 3 : 2)
 
 // First and second level counts
 #define SL_SHIFT 4
 #define SL_COUNT (1U << SL_SHIFT)
 #define FL_MAX   (TLSF_MAX_SHIFT + 1)
-#define FL_SHIFT (SL_SHIFT + ALIGN_SIZE_SHIFT)
+#define FL_SHIFT (SL_SHIFT + ALIGN_SHIFT)
 #define FL_COUNT (FL_MAX - FL_SHIFT + 1)
 
 // Block status bits are stored in the most significant bits of the size field.
@@ -103,7 +103,7 @@ static inline tlsf_block* block_prev(const tlsf_block* block) {
 
 // Return location of next existing block.
 static inline tlsf_block* block_next(tlsf_block* block) {
-    tlsf_block* next = (tlsf_block*)(block->payload + block_size(block) - BLOCK_OVERHEAD); // TODO invalid block
+    tlsf_block* next = to_block(block->payload + block_size(block) - BLOCK_OVERHEAD);
     ASSERT(!block_is_last(block), "Block is last");
     return next;
 }
@@ -244,6 +244,7 @@ static tlsf_block* block_split(tlsf_block* block, size_t size) {
     ASSERT(block_size(block) == remaining_size + size + BLOCK_OVERHEAD, "remaining block size is wrong");
     ASSERT(remaining_size >= BLOCK_SIZE_MIN, "block split with invalid size");
     remaining->header = remaining_size;
+    ASSERT(!(remaining_size & BLOCK_BITS), "invalid block size");
     block_set_free(remaining, true);
     block_set_size(block, size);
     return remaining;
@@ -330,6 +331,7 @@ static tlsf_block* add_pool(tlsf* t, void* mem, size_t size) {
         pool_size = BLOCK_SIZE_MAX; // Allow larger pool sizes returned by tlsf_map
 
     ASSERT((size_t)mem % ALIGN_SIZE == 0, "wrong alignment");
+    ASSERT((size_t)size % ALIGN_SIZE == 0, "wrong pool size");
     ASSERT(pool_size >= BLOCK_SIZE_MIN, "pool is too small");
 
     /*
@@ -337,7 +339,8 @@ static tlsf_block* add_pool(tlsf* t, void* mem, size_t size) {
      * so that the prev_block field falls outside of the pool -
      * it will never be used.
      */
-    tlsf_block* block = (tlsf_block*)((char*)mem - BLOCK_OVERHEAD); // TODO invalid block cast!
+
+    tlsf_block* block = to_block((char*)mem - BLOCK_OVERHEAD);
     block->header = pool_size | BLOCK_BIT_FREE;
     block_insert(t, block);
 

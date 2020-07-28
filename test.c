@@ -15,7 +15,8 @@
 
 static void* tlsf_map(size_t* min_size, void* user) {
     size_t spacelen = *(size_t*)user;
-    *min_size += spacelen;
+    size_t align = sizeof (void*);
+    *min_size = align * ((*min_size + spacelen + align - 1) / align);
     void* p = malloc(*min_size);
     assert(p);
     printf("map addr=%p size=%lu\n", p, *min_size);

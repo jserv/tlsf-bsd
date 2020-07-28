@@ -93,7 +93,8 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
 
 static void* map(size_t* min_size, void* user) {
     size_t spacelen = *(size_t*)user;
-    *min_size += spacelen;
+    size_t align = sizeof (void*);
+    *min_size = align * ((*min_size + spacelen + align - 1) / align);
     void* p = malloc(*min_size);
     //printf("map %p %d\n", p, *min_size);
     return p;
