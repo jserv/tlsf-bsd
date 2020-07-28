@@ -13,46 +13,31 @@
 #include <sys/mman.h>
 #include "tlsf.h"
 
-static void* tlsf_map(size_t* min_size, void* user) {
-    size_t spacelen = *(size_t*)user;
-    size_t align = sizeof (void*);
-    *min_size = align * ((*min_size + spacelen + align - 1) / align);
-    void* p = malloc(*min_size);
-    assert(p);
-    printf("map addr=%p size=%lu\n", p, *min_size);
-    return p;
+static size_t PAGE;
+static size_t MAX_PAGES;
+static size_t curr_pages = 0;
+
+static size_t resize(tlsf* t, void* start, size_t old_size, size_t req_size) {
+    (void)t;
+
+    size_t req_pages = (req_size + PAGE - 1) / PAGE;
+    if (req_pages > MAX_PAGES)
+        return old_size;
+
+    if (req_pages != curr_pages) {
+        if (req_pages < curr_pages)
+            madvise((char*)start + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_FREE);
+        curr_pages = req_pages;
+    }
+
+    return req_size;
 }
 
-static void tlsf_unmap(void* p, size_t s, void* user) {
-    (void)user;
-    printf("unmap addr=%p size=%lu\n", p, s);
-    free(p);
-}
-
-static void* tlsf_map_large(size_t* min_size, void* user) {
-    if (user && *min_size < TLSF_MAX_SIZE)
-        *min_size = TLSF_MAX_SIZE;
-    size_t page = (size_t)sysconf(_SC_PAGESIZE);
-    *min_size = page * ((*min_size + page - 1UL) / page);
-    void* p = mmap(0, *min_size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
-    assert(p != (void*)(-1));
-    return p;
-}
-
-static void tlsf_unmap_large(void* p, size_t s, void* user) {
-    (void)user;
-    int ret = munmap(p, s);
-    assert(ret == 0);
-}
-
-static void random_test(size_t spacelen, const size_t cap) {
+static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
     const size_t maxitems = 2 * spacelen;
 
     void** p = (void**)malloc(maxitems * sizeof(void *));
     assert(p);
-
-    tlsf t;
-    tlsf_init(&t, tlsf_map, tlsf_unmap, &spacelen);
 
     /*
      * Allocate random sizes up to the cap threshold.
@@ -62,17 +47,17 @@ static void random_test(size_t spacelen, const size_t cap) {
     unsigned i = 0;
     while (rest > 0) {
         size_t len = ((size_t)rand() % cap) + 1;
-        p[i] = tlsf_malloc(&t, len);
+        p[i] = tlsf_malloc(t, len);
         assert(p[i]);
         rest -= (int64_t)len;
 
         if (rand() % 10 == 0) {
             len = ((size_t)rand() % cap) + 1;
-            p[i] = tlsf_realloc(&t, p[i], len);
+            p[i] = tlsf_realloc(t, p[i], len);
             assert(p[i]);
         }
 
-        tlsf_check(&t);
+        tlsf_check(t);
 
         /* Fill with magic (only when testing up to 1MB). */
         uint8_t* data = (uint8_t*)p[i];
@@ -94,11 +79,11 @@ static void random_test(size_t spacelen, const size_t cap) {
             continue;
         uint8_t* data = (uint8_t*)p[target];
         assert(data[0] == 0xa5);
-        tlsf_free(&t, p[target]);
+        tlsf_free(t, p[target]);
         p[target] = NULL;
         n--;
 
-        tlsf_check(&t);
+        tlsf_check(t);
     }
 
     free(p);
@@ -106,7 +91,7 @@ static void random_test(size_t spacelen, const size_t cap) {
 
 #define	__arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
 
-static void random_sizes_test(void) {
+static void random_sizes_test(tlsf* t) {
     const size_t sizes[] = {32, 64, 128, 256, 1024, 1024 * 1024};//, 128 * 1024 * 1024};
 
     for (unsigned i = 0; i < __arraycount(sizes); i++) {
@@ -115,7 +100,7 @@ static void random_sizes_test(void) {
         while (n--) {
             size_t cap = (size_t)rand() % sizes[i] + 1;
             printf("sizes = %lu, cap = %lu\n", sizes[i], cap);
-            random_test(sizes[i], cap);
+            random_test(t, sizes[i], cap);
         }
     }
 }
@@ -139,28 +124,33 @@ static void large_alloc(tlsf* t, size_t s) {
     }
 }
 
-static void large_size_test(bool large_pool) {
-    tlsf t;
-    tlsf_init(&t, tlsf_map_large, tlsf_unmap_large, large_pool ? (void*)1 : 0);
-
+static void large_size_test(tlsf* t) {
     size_t s = 1;
     while (s <= TLSF_MAX_SIZE) {
-        large_alloc(&t, s);
+        large_alloc(t, s);
         s *= 2;
     }
 
     s = TLSF_MAX_SIZE;
     while (s > 0) {
-        large_alloc(&t, s);
+        large_alloc(t, s);
         s /= 2;
     }
 }
 
 int main(void) {
+    PAGE = (size_t)sysconf(_SC_PAGESIZE);
+    MAX_PAGES = 10 * TLSF_MAX_SIZE / PAGE;
+
+    void* p = mmap(0, MAX_PAGES * PAGE,
+                   PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE,
+                   -1, 0);
+    tlsf t;
+    tlsf_init(&t, p, resize);
+
     srand((unsigned int)time(0));
-    large_size_test(true);
-    large_size_test(false);
-    random_sizes_test();
+    large_size_test(&t);
+    random_sizes_test(&t);
     puts("OK!");
     return 0;
 }

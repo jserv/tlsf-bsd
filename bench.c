@@ -91,13 +91,12 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
     }
 }
 
-static void* map(size_t* min_size, void* user) {
-    size_t spacelen = *(size_t*)user;
-    size_t align = sizeof (void*);
-    *min_size = align * ((*min_size + spacelen + align - 1) / align);
-    void* p = malloc(*min_size);
-    //printf("map %p %d\n", p, *min_size);
-    return p;
+static size_t max_size;
+
+static size_t resize(tlsf* _t, void* _start, size_t old_size, size_t req_size) {
+    (void)_t;
+    (void)_start;
+    return req_size > max_size ? old_size : req_size;
 }
 
 int main(int argc, char **argv) {
@@ -129,8 +128,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    size_t spacelen = blk_max * num_blks;
-    tlsf_init(&t, map, 0, &spacelen);
+    max_size = blk_max * num_blks;
+    tlsf_init(&t, malloc(max_size), resize);
 
     void** blk_array = (void**)calloc(num_blks, sizeof(void*));
     assert(blk_array);

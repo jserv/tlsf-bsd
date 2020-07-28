@@ -12,8 +12,7 @@
 
 typedef struct tlsf_ tlsf;
 typedef struct tlsf_block_ tlsf_block;
-typedef void* (*tlsf_map_t)(size_t*, void*);
-typedef void  (*tlsf_unmap_t)(void*, size_t, void*);
+typedef size_t (*tlsf_resize)(tlsf*, void*, size_t, size_t);
 
 struct tlsf_block_ {
     // Points to the previous block.
@@ -39,12 +38,12 @@ struct tlsf_ {
     // Head of free lists.
     tlsf_block* blocks[TLSF_FL_COUNT][TLSF_SL_COUNT];
 
-    tlsf_map_t   map;
-    tlsf_unmap_t unmap;
-    void*        user;
+    tlsf_resize resize;
+    void*       start;
+    size_t      size;
 };
 
-void tlsf_init(tlsf*, tlsf_map_t, tlsf_unmap_t, void*);
+void tlsf_init(tlsf*, void*, tlsf_resize);
 void* tlsf_malloc(tlsf*, size_t);
 void* tlsf_realloc(tlsf*, void*, size_t);
 void  tlsf_free(tlsf*, void*);
