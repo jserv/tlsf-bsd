@@ -333,14 +333,12 @@ static tlsf_block* block_ltrim_free(tlsf* t, tlsf_block* block, size_t size) {
 }
 
 // Find a free block with an appropriate size.
-static tlsf_block* block_find_free(tlsf* t, size_t size, size_t rounded) {
+static tlsf_block* block_find_free(tlsf* t, size_t size) {
     uint32_t fl, sl;
-    mapping(rounded, &fl, &sl);
+    mapping(size, &fl, &sl);
     tlsf_block* block = search_suitable_block(t, &fl, &sl);
-    if (block) {
-        ASSERT(block_size(block) >= size, "insufficient block size");
+    if (block)
         remove_free_block(t, block, fl, sl);
-    }
     return block;
 }
 
@@ -391,13 +389,14 @@ static void shrink(tlsf* t, tlsf_block* block) {
 
 static tlsf_block* block_alloc(tlsf* t, size_t size) {
     size_t rounded = round_block_size(size);
-    tlsf_block* block = block_find_free(t, size, rounded);
+    tlsf_block* block = block_find_free(t, rounded);
     if (!block) {
         if (!grow(t, rounded))
             return 0;
-        block = block_find_free(t, size, rounded);
+        block = block_find_free(t, rounded);
         ASSERT(block, "no block found");
     }
+    ASSERT(block_size(block) >= size, "insufficient block size");
     return block;
 }
 
