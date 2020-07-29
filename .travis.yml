@@ -1,5 +1,7 @@
 language: c
 
+dist: bionic
+
 script: make test
 
 matrix:
@@ -23,26 +25,6 @@ matrix:
             - clang-4.0
       env:
         - MATRIX_EVAL="CC=clang-4.0"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-5.0
-          packages:
-            - clang-5.0
-      env:
-        - MATRIX_EVAL="CC=clang-5.0"
-
-    - os: linux
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-4.9
-      env:
-         - MATRIX_EVAL="CC=gcc-4.9"
 
     - os: linux
       addons:
@@ -80,9 +62,10 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - gcc-i686-linux-gnu
+            - gcc-7-i686-linux-gnu
+            - gcc-7-multilib-i686-linux-gnu
       env:
-        - MATRIX_EVAL="CC=i686-linux-gnu-gcc"
+        - MATRIX_EVAL="CC=i686-linux-gnu-gcc-7"
 
 before_install:
     - eval "${MATRIX_EVAL}"

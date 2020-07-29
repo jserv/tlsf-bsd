@@ -14,21 +14,20 @@ test: all
 	./build/test
 
 CFLAGS = \
-	-std=c11 -g -O2 \
+	-std=gnu11 -g -O2 \
 	-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
 	-DTLSF_ASSERT -DTLSF_CHECK
-LDFLAGS = -lrt
-CFLAGS_TEST = $(CFLAGS) -std=gnu11
+LDFLAGS = -lrt -static
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))
 deps := $(OBJS:%.o=%.o.d)
 
 $(OUT)/test: $(OBJS) test.c
-	$(CC) $(CFLAGS_TEST) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(OUT)/bench: $(OBJS) bench.c
-	$(CC) $(CFLAGS_TEST) -o $@ -MMD -MF $@.d $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ -MMD -MF $@.d $^ $(LDFLAGS)
 
 $(OUT)/%.o: %.c
 	@mkdir -p $(OUT)

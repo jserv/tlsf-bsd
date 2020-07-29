@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     int err = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
     assert(err == 0);
 
-    printf("blk_min=%lu to blk_max=%lu\n", blk_min, blk_max);
+    printf("blk_min=%zu to blk_max=%zu\n", blk_min, blk_max);
 
     run_alloc_benchmark(loops, blk_min, blk_max,
                         blk_array, num_blks, clear);
@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     assert(err == 0);
 
     /* Dump both machine and human readable versions */
-    printf("%lu:%lu:%lu:%u:%lu:%.6f: took %.6f s for %lu malloc/free\nbenchmark loops of %lu-%lu bytes.  ~%.3f us per loop\n",
+    printf("%zu:%zu:%zu:%u:%lu:%.6f: took %.6f s for %zu malloc/free\nbenchmark loops of %zu-%zu bytes.  ~%.3f us per loop\n",
            blk_min, blk_max, loops,
            clear, usage.ru_maxrss, elapsed, elapsed, loops, blk_min,
            blk_max, elapsed / (double)loops * 1e6);

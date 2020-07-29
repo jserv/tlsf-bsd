@@ -110,14 +110,14 @@ static void random_sizes_test(tlsf* t) {
 
         while (n--) {
             size_t cap = (size_t)rand() % sizes[i] + 1;
-            printf("sizes = %lu, cap = %lu\n", sizes[i], cap);
+            printf("sizes = %zu, cap = %zu\n", sizes[i], cap);
             random_test(t, sizes[i], cap);
         }
     }
 }
 
 static void large_alloc(tlsf* t, size_t s) {
-    printf("large alloc %lu\n", s);
+    printf("large alloc %zu\n", s);
     for (size_t d = 0; d < 100 && d < s; ++d) {
         void* p = tlsf_malloc(t, s - d);
         assert(p);
