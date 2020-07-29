@@ -183,8 +183,9 @@ TLSF_INL tlsf_block* block_find_suitable(tlsf* t, uint32_t *fl, uint32_t *sl) {
     if (!sl_map) {
         // No block exists. Search in the next largest first-level list.
         uint32_t fl_map = t->fl & (uint32_t)(~(uint64_t)0 << (*fl + 1));
+
         // No free blocks available, memory has been exhausted.
-        if (!fl_map)
+        if (UNLIKELY(!fl_map))
             return 0;
 
         *fl = bitmap_ffs(fl_map);
@@ -467,29 +468,26 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
         return tlsf_malloc(t, size);
 
     tlsf_block* block = block_from_payload(mem);
-    tlsf_block* next = block_next(block);
-
-    size_t cursize = block_size(block),
-        combined = cursize + block_size(next) + BLOCK_OVERHEAD;
+    size_t avail = block_size(block);
     size = adjust_size(size, ALIGN_SIZE);
     if (UNLIKELY(size > TLSF_MAX_SIZE))
         return 0;
 
     ASSERT(!block_is_free(block), "block already marked as free");
 
-    // If the next block is used, or when combined with the current
-    // block, does not offer enough space, we must relocate and copy.
-    if (size > cursize && (!block_is_free(next) || size > combined)) {
-        char* p = (char*)tlsf_malloc(t, size);
-        if (p) {
-            memcpy(p, mem, cursize);
-            tlsf_free(t, mem);
-        }
-        return p;
-    }
-
     // Do we need to expand to the next block?
-    if (size > cursize) {
+    if (size > avail) {
+        // If the next block is used or too small, we must relocate and copy.
+        tlsf_block* next = block_next(block);
+        if (!block_is_free(next) || size > avail + block_size(next) + BLOCK_OVERHEAD) {
+            void* dst = tlsf_malloc(t, size);
+            if (dst) {
+                memcpy(dst, mem, avail);
+                tlsf_free(t, mem);
+            }
+            return dst;
+        }
+
         block_merge_next(t, block);
         block_set_prev_free(block_next(block), false);
     }
