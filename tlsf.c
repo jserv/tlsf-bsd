@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define UNLIKELY(x) __builtin_expect(!!(x), false)
+
 // All allocation sizes and addresses are aligned.
 #define ALIGN_SIZE  ((size_t)1 << ALIGN_SHIFT)
 #define ALIGN_SHIFT (sizeof (size_t) == 8 ? 3 : 2)
@@ -386,7 +388,7 @@ TLSF_INL tlsf_block* block_find_free(tlsf* t, size_t size) {
     uint32_t fl, sl;
     mapping(rounded, &fl, &sl);
     tlsf_block* block = block_find_suitable(t, &fl, &sl);
-    if (!block) {
+    if (UNLIKELY(!block)) {
         if (!arena_grow(t, rounded))
             return 0;
         block = block_find_suitable(t, &fl, &sl);
@@ -406,10 +408,10 @@ TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
 
 TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
     size = adjust_size(size, ALIGN_SIZE);
-    if (size > TLSF_MAX_SIZE)
+    if (UNLIKELY(size > TLSF_MAX_SIZE))
         return 0;
     tlsf_block* block = block_find_free(t, size);
-    if (!block)
+    if (UNLIKELY(!block))
         return 0;
     return block_use(t, block, size);
 }
@@ -417,10 +419,10 @@ TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
 TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
     size_t adjust = adjust_size(size, ALIGN_SIZE);
 
-    if (align &&
-        ((align & (align - 1)) || // align is not a power of two
-         (size & (align - 1)) || // size is not a multiple of align
-         adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block))) // size is too large
+    if (UNLIKELY(align &&
+                 ((align & (align - 1)) || // align is not a power of two
+                  (size & (align - 1)) || // size is not a multiple of align
+                  adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block)))) // size is too large
         return 0;
 
     if (align <= ALIGN_SIZE)
@@ -428,7 +430,7 @@ TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
 
     size_t asize = adjust_size(adjust + align - 1 + sizeof (tlsf_block), align);
     tlsf_block* block = block_find_free(t, asize);
-    if (!block)
+    if (UNLIKELY(!block))
         return 0;
 
     char* mem = align_ptr(block->payload + sizeof (tlsf_block), align);
@@ -437,7 +439,7 @@ TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
 }
 
 TLSF_API void tlsf_free(tlsf* t, void* mem) {
-    if (!mem)
+    if (UNLIKELY(!mem))
         return;
 
     tlsf_block* block = block_from_payload(mem);
@@ -447,7 +449,7 @@ TLSF_API void tlsf_free(tlsf* t, void* mem) {
     block = block_merge_prev(t, block);
     block = block_merge_next(t, block);
 
-    if (!block_size(block_next(block)))
+    if (UNLIKELY(!block_size(block_next(block))))
         arena_shrink(t, block);
     else
         block_insert(t, block);
@@ -455,13 +457,13 @@ TLSF_API void tlsf_free(tlsf* t, void* mem) {
 
 TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     // Zero-size requests are treated as free.
-    if (mem && !size) {
+    if (UNLIKELY(mem && !size)) {
         tlsf_free(t, mem);
         return 0;
     }
 
     // Null-pointer requests are treated as malloc.
-    if (!mem)
+    if (UNLIKELY(!mem))
         return tlsf_malloc(t, size);
 
     tlsf_block* block = block_from_payload(mem);
@@ -470,7 +472,7 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     size_t cursize = block_size(block),
         combined = cursize + block_size(next) + BLOCK_OVERHEAD;
     size = adjust_size(size, ALIGN_SIZE);
-    if (size > TLSF_MAX_SIZE)
+    if (UNLIKELY(size > TLSF_MAX_SIZE))
         return 0;
 
     ASSERT(!block_is_free(block), "block already marked as free");
