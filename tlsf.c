@@ -221,20 +221,14 @@ static void remove_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t 
     }
 }
 
-// Insert a free block into the free block list.
+// Insert a free block into the free block list and mark the bitmaps.
 static void insert_free_block(tlsf* t, tlsf_block* block, uint32_t fl, uint32_t sl) {
     tlsf_block* current = t->block[fl][sl];
     ASSERT(block, "cannot insert a null entry into the free list");
     block->next_free = current;
     block->prev_free = 0;
-
     if (current)
         current->prev_free = block;
-
-    /*
-     * Insert the new block at the head of the list, and mark the first-
-     * and second-level bitmaps appropriately.
-     */
     t->block[fl][sl] = block;
     t->fl |= 1U << fl;
     t->sl[fl] |= 1U << sl;
@@ -342,6 +336,12 @@ static tlsf_block* block_find_free(tlsf* t, size_t size) {
     return block;
 }
 
+static void* block_use(tlsf* t, tlsf_block* block, size_t size) {
+    block_rtrim_free(t, block, size);
+    block_set_free(block, false);
+    return block->payload;
+}
+
 static tlsf_block* get_sentinel(tlsf* t) {
     return to_block((char*)t->start + (t->size ? t->size - 2*BLOCK_OVERHEAD : -BLOCK_OVERHEAD));
 }
@@ -405,12 +405,6 @@ TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
     t->start = start;
     t->resize = resize;
     ASSERT((size_t)t->start % ALIGN_SIZE == 0, "wrong alignment");
-}
-
-static void* block_use(tlsf* t, tlsf_block* block, size_t size) {
-    block_rtrim_free(t, block, size);
-    block_set_free(block, false);
-    return block->payload;
 }
 
 TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
