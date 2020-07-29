@@ -251,15 +251,15 @@ static void block_insert(tlsf* t, tlsf_block* block) {
 
 // Split a block into two, the second of which is free.
 static tlsf_block* block_split(tlsf_block* block, size_t size) {
-    tlsf_block* remaining = to_block(block->payload + size - BLOCK_OVERHEAD);
-    size_t remaining_size = block_size(block) - (size + BLOCK_OVERHEAD);
-    ASSERT(block_size(block) == remaining_size + size + BLOCK_OVERHEAD, "remaining block size is wrong");
-    ASSERT(remaining_size >= BLOCK_SIZE_MIN, "block split with invalid size");
-    remaining->header = remaining_size;
-    ASSERT(!(remaining_size % ALIGN_SIZE), "invalid block size");
-    block_set_free(remaining, true);
+    tlsf_block* rest = to_block(block->payload + size - BLOCK_OVERHEAD);
+    size_t rest_size = block_size(block) - (size + BLOCK_OVERHEAD);
+    ASSERT(block_size(block) == rest_size + size + BLOCK_OVERHEAD, "rest block size is wrong");
+    ASSERT(rest_size >= BLOCK_SIZE_MIN, "block split with invalid size");
+    rest->header = rest_size;
+    ASSERT(!(rest_size % ALIGN_SIZE), "invalid block size");
+    block_set_free(rest, true);
     block_set_size(block, size);
-    return remaining;
+    return rest;
 }
 
 // Absorb a free block's storage into an adjacent previous free block.
@@ -299,10 +299,10 @@ static tlsf_block* block_merge_next(tlsf* t, tlsf_block* block) {
 static void block_trim_free(tlsf* t, tlsf_block* block, size_t size) {
     ASSERT(block_is_free(block), "block must be free");
     if (block_can_split(block, size)) {
-        tlsf_block* remaining = block_split(block, size);
+        tlsf_block* rest = block_split(block, size);
         block_link_next(block);
-        block_set_prev_free(remaining, true);
-        block_insert(t, remaining);
+        block_set_prev_free(rest, true);
+        block_insert(t, rest);
     }
 }
 
@@ -310,11 +310,10 @@ static void block_trim_free(tlsf* t, tlsf_block* block, size_t size) {
 static void block_trim_used(tlsf* t, tlsf_block* block, size_t size) {
     ASSERT(!block_is_free(block), "block must be used");
     if (block_can_split(block, size)) {
-        // If the next block is free, we must coalesce.
-        tlsf_block* remaining = block_split(block, size);
-        block_set_prev_free(remaining, false);
-        remaining = block_merge_next(t, remaining);
-        block_insert(t, remaining);
+        tlsf_block* rest = block_split(block, size);
+        block_set_prev_free(rest, false);
+        rest = block_merge_next(t, rest);
+        block_insert(t, rest);
     }
 }
 
@@ -392,8 +391,8 @@ TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
         if (!grow(t, round_block_size(size)))
             return 0;
         block = block_find_free(t, size);
+        ASSERT(block, "no block found");
     }
-    ASSERT(block, "No block found");
 
     block_trim_free(t, block, size);
     block_set_free(block, false);
