@@ -8,8 +8,8 @@
 #  define TLSF_API
 #endif
 
-#define _TLSF_FL_COUNT 32
 #define _TLSF_SL_COUNT 16
+#define _TLSF_FL_COUNT (sizeof (size_t) == 8 ? 32 : 25)
 #define _TLSF_FL_MAX   (sizeof (size_t) == 8 ? 38 : 30)
 #define TLSF_MAX_SIZE  (((size_t)1 << (_TLSF_FL_MAX - 1)) - sizeof (size_t))
 

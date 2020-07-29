@@ -151,7 +151,7 @@ static void large_size_test(tlsf* t) {
 
 int main(void) {
     PAGE = (size_t)sysconf(_SC_PAGESIZE);
-    MAX_PAGES = 10 * TLSF_MAX_SIZE / PAGE;
+    MAX_PAGES = 20 * TLSF_MAX_SIZE / PAGE;
 
     void* p = mmap(0, MAX_PAGES * PAGE,
                    PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE,

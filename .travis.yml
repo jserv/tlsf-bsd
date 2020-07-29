@@ -4,74 +4,85 @@ script: make test
 
 matrix:
   include:
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-3.9
           packages:
-            - g++-4.9
+            - clang-3.9
       env:
-         - MATRIX_EVAL="CC=gcc-4.9 && CXX=g++-4.9"
+        - MATRIX_EVAL="CC=clang-3.9"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-4.0
           packages:
-            - g++-5
+            - clang-4.0
       env:
-         - MATRIX_EVAL="CC=gcc-5 && CXX=g++-5"
+        - MATRIX_EVAL="CC=clang-4.0"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-5.0
           packages:
-            - g++-6
+            - clang-5.0
       env:
-        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+        - MATRIX_EVAL="CC=clang-5.0"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.6
           packages:
-            - clang-3.6
+            - gcc-4.9
       env:
-        - MATRIX_EVAL="CC=clang-3.6 && CXX=clang++-3.6"
+         - MATRIX_EVAL="CC=gcc-4.9"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.7
           packages:
-            - clang-3.7
+            - gcc-5
       env:
-        - MATRIX_EVAL="CC=clang-3.7 && CXX=clang++-3.7"
+         - MATRIX_EVAL="CC=gcc-5"
 
-    # works on Precise and Trusty
     - os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-precise-3.8
           packages:
-            - clang-3.8
+            - gcc-6
       env:
-        - MATRIX_EVAL="CC=clang-3.8 && CXX=clang++-3.8"
+        - MATRIX_EVAL="CC=gcc-6"
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7"
+
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-i686-linux-gnu
+      env:
+        - MATRIX_EVAL="CC=i686-linux-gnu-gcc"
 
 before_install:
     - eval "${MATRIX_EVAL}"
