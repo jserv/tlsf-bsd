@@ -47,7 +47,18 @@ static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
     unsigned i = 0;
     while (rest > 0) {
         size_t len = ((size_t)rand() % cap) + 1;
-        p[i] = tlsf_malloc(t, len);
+        if (rand() % 2 == 0) {
+            p[i] = tlsf_malloc(t, len);
+        } else {
+            size_t align = 1U << (rand() % 20);
+            if (cap < align)
+                align = 0;
+            else
+                len = align * (((size_t)rand() % (cap / align)) + 1);
+            p[i] = tlsf_aalloc(t, align, len);
+            if (align)
+                assert(!((size_t)p[i] % align));
+        }
         assert(p[i]);
         rest -= (int64_t)len;
 
@@ -92,7 +103,7 @@ static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
 #define	__arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
 
 static void random_sizes_test(tlsf* t) {
-    const size_t sizes[] = {32, 64, 128, 256, 1024, 1024 * 1024};//, 128 * 1024 * 1024};
+    const size_t sizes[] = {16, 32, 64, 128, 256, 512, 1024, 1024 * 1024};//, 128 * 1024 * 1024};
 
     for (unsigned i = 0; i < __arraycount(sizes); i++) {
         unsigned n = 1024;

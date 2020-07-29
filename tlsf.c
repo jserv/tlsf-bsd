@@ -93,13 +93,18 @@ static inline void block_set_prev_free(tlsf_block* block, bool free) {
     block->header = free ? block->header | BLOCK_BIT_PREV_FREE : block->header & ~BLOCK_BIT_PREV_FREE;
 }
 
-static inline size_t align_up(size_t x) {
-    return (x + (ALIGN_SIZE - 1)) & ~(ALIGN_SIZE - 1);
+static inline size_t align_up(size_t x, size_t align) {
+    ASSERT(!(align & (align - 1)), "must align to a power of two");
+    return (x + (align - 1)) & ~(align - 1);
+}
+
+static inline char* align_ptr(char* p, size_t align) {
+    return (char*)align_up((size_t)p, align);
 }
 
 static inline tlsf_block* to_block(void* ptr) {
     tlsf_block* block = (tlsf_block*)ptr;
-    ASSERT((size_t)block->payload == align_up((size_t)block->payload), "block not aligned properly");
+    ASSERT(block->payload == align_ptr(block->payload, ALIGN_SIZE), "block not aligned properly");
     return block;
 }
 
@@ -137,9 +142,9 @@ static inline void block_set_free(tlsf_block* block, bool free) {
     block_set_prev_free(block_link_next(block), free);
 }
 
-// Adjust allocation size to be word aligned, and no smaller than internal minimum.
-static inline size_t adjust_size(size_t size) {
-    size = align_up(size);
+// Adjust allocation size to be aligned, and no smaller than internal minimum.
+static inline size_t adjust_size(size_t size, size_t align) {
+    size = align_up(size, align);
     return size < BLOCK_SIZE_MIN ? BLOCK_SIZE_MIN : size;
 }
 
@@ -296,7 +301,7 @@ static tlsf_block* block_merge_next(tlsf* t, tlsf_block* block) {
 }
 
 // Trim any trailing block space off the end of a block, return to pool.
-static void block_trim_free(tlsf* t, tlsf_block* block, size_t size) {
+static void block_rtrim_free(tlsf* t, tlsf_block* block, size_t size) {
     ASSERT(block_is_free(block), "block must be free");
     if (block_can_split(block, size)) {
         tlsf_block* rest = block_split(block, size);
@@ -307,7 +312,7 @@ static void block_trim_free(tlsf* t, tlsf_block* block, size_t size) {
 }
 
 // Trim any trailing block space off the end of a used block, return to pool.
-static void block_trim_used(tlsf* t, tlsf_block* block, size_t size) {
+static void block_rtrim_used(tlsf* t, tlsf_block* block, size_t size) {
     ASSERT(!block_is_free(block), "block must be used");
     if (block_can_split(block, size)) {
         tlsf_block* rest = block_split(block, size);
@@ -317,10 +322,20 @@ static void block_trim_used(tlsf* t, tlsf_block* block, size_t size) {
     }
 }
 
+static tlsf_block* block_ltrim_free(tlsf* t, tlsf_block* block, size_t size) {
+    ASSERT(block_is_free(block), "block must be free");
+    ASSERT(block_can_split(block, size), "block is too small");
+    tlsf_block* rest = block_split(block, size - BLOCK_OVERHEAD);
+    block_set_prev_free(rest, true);
+    block_link_next(block);
+    block_insert(t, block);
+    return rest;
+}
+
 // Find a free block with an appropriate size.
-static tlsf_block* block_find_free(tlsf* t, size_t size) {
+static tlsf_block* block_find_free(tlsf* t, size_t size, size_t rounded) {
     uint32_t fl, sl;
-    mapping(round_block_size(size), &fl, &sl);
+    mapping(rounded, &fl, &sl);
     tlsf_block* block = search_suitable_block(t, &fl, &sl);
     if (block) {
         ASSERT(block_size(block) >= size, "insufficient block size");
@@ -374,6 +389,18 @@ static void shrink(tlsf* t, tlsf_block* block) {
     }
 }
 
+static tlsf_block* block_alloc(tlsf* t, size_t size) {
+    size_t rounded = round_block_size(size);
+    tlsf_block* block = block_find_free(t, size, rounded);
+    if (!block) {
+        if (!grow(t, rounded))
+            return 0;
+        block = block_find_free(t, size, rounded);
+        ASSERT(block, "no block found");
+    }
+    return block;
+}
+
 TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
     memset(t, 0, sizeof (tlsf));
     t->start = start;
@@ -381,22 +408,42 @@ TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
     ASSERT((size_t)t->start % ALIGN_SIZE == 0, "wrong alignment");
 }
 
-TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
-    size = adjust_size(size);
-    if (size > TLSF_MAX_SIZE)
-        return 0;
-
-    tlsf_block* block = block_find_free(t, size);
-    if (!block) {
-        if (!grow(t, round_block_size(size)))
-            return 0;
-        block = block_find_free(t, size);
-        ASSERT(block, "no block found");
-    }
-
-    block_trim_free(t, block, size);
+static void* block_use(tlsf* t, tlsf_block* block, size_t size) {
+    block_rtrim_free(t, block, size);
     block_set_free(block, false);
     return block->payload;
+}
+
+TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
+    size = adjust_size(size, ALIGN_SIZE);
+    if (size > TLSF_MAX_SIZE)
+        return 0;
+    tlsf_block* block = block_alloc(t, size);
+    if (!block)
+        return 0;
+    return block_use(t, block, size);
+}
+
+TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
+    size_t adjust = adjust_size(size, ALIGN_SIZE);
+
+    if (align &&
+        ((align & (align - 1)) || // align is not a power of two
+         (size & (align - 1)) || // size is not a multiple of align
+         adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block))) // size is too large
+        return 0;
+
+    if (align <= ALIGN_SIZE)
+        return tlsf_malloc(t, size);
+
+    size_t asize = adjust_size(adjust + align - 1 + sizeof (tlsf_block), align);
+    tlsf_block* block = block_alloc(t, asize);
+    if (!block)
+        return 0;
+
+    char* mem = align_ptr(block->payload + sizeof (tlsf_block), align);
+    block = block_ltrim_free(t, block, (size_t)(mem - block->payload));
+    return block_use(t, block, adjust);
 }
 
 TLSF_API void tlsf_free(tlsf* t, void* mem) {
@@ -432,7 +479,7 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
 
     size_t cursize = block_size(block),
         combined = cursize + block_size(next) + BLOCK_OVERHEAD;
-    size = adjust_size(size);
+    size = adjust_size(size, ALIGN_SIZE);
     if (size > TLSF_MAX_SIZE)
         return 0;
 
@@ -456,7 +503,7 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
     }
 
     // Trim the resulting block and return the original pointer.
-    block_trim_used(t, block, size);
+    block_rtrim_used(t, block, size);
     return mem;
 }
 

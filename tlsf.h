@@ -25,6 +25,7 @@ struct tlsf_ {
 };
 
 TLSF_API void tlsf_init(tlsf*, void*, tlsf_resize);
+TLSF_API void* tlsf_aalloc(tlsf*, size_t, size_t);
 TLSF_API void* tlsf_malloc(tlsf*, size_t);
 TLSF_API void* tlsf_realloc(tlsf*, void*, size_t);
 TLSF_API void  tlsf_free(tlsf*, void*);
