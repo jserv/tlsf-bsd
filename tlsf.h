@@ -30,7 +30,7 @@ TLSF_API void* tlsf_malloc(tlsf*, size_t);
 TLSF_API void* tlsf_realloc(tlsf*, void*, size_t);
 TLSF_API void  tlsf_free(tlsf*, void*);
 
-#ifdef TLSF_CHECK
+#ifdef TLSF_ENABLE_CHECK
 TLSF_API void tlsf_check(tlsf*);
 #else
 static inline void tlsf_check(tlsf* t) { (void)t; }

@@ -16,7 +16,7 @@ test: all
 CFLAGS = \
 	-std=gnu11 -g -O2 \
 	-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
-	-DTLSF_ASSERT -DTLSF_CHECK
+	-DTLSF_ENABLE_ASSERT -DTLSF_ENABLE_CHECK
 LDFLAGS = -lrt -static
 
 OBJS = tlsf.o
