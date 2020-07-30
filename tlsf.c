@@ -49,9 +49,6 @@ struct tlsf_block_ {
     // Size and block bits
     size_t header;
 
-    // Block payload
-    char payload[0];
-
     // Next and previous free blocks.
     // These fields are only valid if the corresponding block is free.
     tlsf_block *next_free, *prev_free;
@@ -110,14 +107,18 @@ TLSF_INL char* align_ptr(char* p, size_t align) {
     return (char*)align_up((size_t)p, align);
 }
 
+TLSF_INL char* block_payload(tlsf_block* block) {
+    return (char*)block + offsetof(tlsf_block, header) + BLOCK_OVERHEAD;
+}
+
 TLSF_INL tlsf_block* to_block(void* ptr) {
     tlsf_block* block = (tlsf_block*)ptr;
-    TLSF_ASSERT(block->payload == align_ptr(block->payload, ALIGN_SIZE), "block not aligned properly");
+    TLSF_ASSERT(block_payload(block) == align_ptr(block_payload(block), ALIGN_SIZE), "block not aligned properly");
     return block;
 }
 
 TLSF_INL tlsf_block* block_from_payload(void* ptr) {
-    return to_block((char*)ptr - offsetof(tlsf_block, payload));
+    return to_block((char*)ptr - offsetof(tlsf_block, header) - BLOCK_OVERHEAD);
 }
 
 // Return location of previous block.
@@ -128,7 +129,7 @@ TLSF_INL tlsf_block* block_prev(const tlsf_block* block) {
 
 // Return location of next existing block.
 TLSF_INL tlsf_block* block_next(tlsf_block* block) {
-    tlsf_block* next = to_block(block->payload + block_size(block) - BLOCK_OVERHEAD);
+    tlsf_block* next = to_block(block_payload(block) + block_size(block) - BLOCK_OVERHEAD);
     TLSF_ASSERT(block_size(block), "block is last");
     return next;
 }
@@ -259,7 +260,7 @@ TLSF_INL void block_insert(tlsf* t, tlsf_block* block) {
 
 // Split a block into two, the second of which is free.
 TLSF_INL tlsf_block* block_split(tlsf_block* block, size_t size) {
-    tlsf_block* rest = to_block(block->payload + size - BLOCK_OVERHEAD);
+    tlsf_block* rest = to_block(block_payload(block) + size - BLOCK_OVERHEAD);
     size_t rest_size = block_size(block) - (size + BLOCK_OVERHEAD);
     TLSF_ASSERT(block_size(block) == rest_size + size + BLOCK_OVERHEAD, "rest block size is wrong");
     TLSF_ASSERT(rest_size >= BLOCK_SIZE_MIN, "block split with invalid size");
@@ -338,11 +339,11 @@ TLSF_INL tlsf_block* block_ltrim_free(tlsf* t, tlsf_block* block, size_t size) {
 TLSF_INL void* block_use(tlsf* t, tlsf_block* block, size_t size) {
     block_rtrim_free(t, block, size);
     block_set_free(block, false);
-    return block->payload;
+    return block_payload(block);
 }
 
 TLSF_INL tlsf_block* get_sentinel(tlsf* t) {
-    return to_block((char*)t->start + (t->size ? t->size - 2*BLOCK_OVERHEAD : -BLOCK_OVERHEAD));
+    return to_block(t->size ? (char*)t->start + t->size - 2*BLOCK_OVERHEAD : (char*)t->start - BLOCK_OVERHEAD);
 }
 
 TLSF_INL void check_sentinel(tlsf* t, tlsf_block* block) {
@@ -436,8 +437,8 @@ TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
     if (UNLIKELY(!block))
         return 0;
 
-    char* mem = align_ptr(block->payload + sizeof (tlsf_block), align);
-    block = block_ltrim_free(t, block, (size_t)(mem - block->payload));
+    char* mem = align_ptr(block_payload(block) + sizeof (tlsf_block), align);
+    block = block_ltrim_free(t, block, (size_t)(mem - block_payload(block)));
     return block_use(t, block, adjust);
 }
 
