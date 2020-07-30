@@ -24,7 +24,7 @@ matrix:
           packages:
             - clang-4.0
       env:
-        - MATRIX_EVAL="CC=clang-4.0"
+        - MATRIX_EVAL="CC=clang-4.0; export CFLAGS=-fsanitize=undefined"
 
     - os: linux
       addons:
@@ -54,7 +54,7 @@ matrix:
           packages:
             - gcc-7
       env:
-        - MATRIX_EVAL="CC=gcc-7"
+        - MATRIX_EVAL="CC=gcc-7; export CFLAGS=-fsanitize=undefined"
 
     - os: linux
       addons:
@@ -65,7 +65,7 @@ matrix:
             - gcc-7-i686-linux-gnu
             - gcc-7-multilib-i686-linux-gnu
       env:
-        - MATRIX_EVAL="CC=i686-linux-gnu-gcc-7"
+        - MATRIX_EVAL="CC=i686-linux-gnu-gcc-7; export LDFLAGS=-static"
 
 before_install:
     - eval "${MATRIX_EVAL}"

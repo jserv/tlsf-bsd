@@ -13,11 +13,10 @@ test: all
 	./build/bench -s 10:12345
 	./build/test
 
-CFLAGS = \
-	-std=gnu11 -g -O2 \
-	-Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
-	-DTLSF_ENABLE_ASSERT -DTLSF_ENABLE_CHECK
-LDFLAGS = -lrt -static
+CFLAGS += \
+  -std=gnu11 -g -O2 \
+  -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-qual -Wconversion -Wc++-compat \
+  -DTLSF_ENABLE_ASSERT -DTLSF_ENABLE_CHECK
 
 OBJS = tlsf.o
 OBJS := $(addprefix $(OUT)/,$(OBJS))
