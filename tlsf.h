@@ -1,5 +1,4 @@
-#ifndef _TLSF_H
-#define _TLSF_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -34,6 +33,4 @@ TLSF_API void  tlsf_free(tlsf*, void*);
 TLSF_API void tlsf_check(tlsf*);
 #else
 static inline void tlsf_check(tlsf* t) { (void)t; }
-#endif
-
 #endif
