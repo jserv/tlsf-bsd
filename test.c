@@ -55,7 +55,7 @@ static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
                 align = 0;
             else
                 len = align * (((size_t)rand() % (cap / align)) + 1);
-            p[i] = tlsf_aalloc(t, align, len);
+            p[i] = !align || !len ? tlsf_malloc(t, len) : tlsf_aalloc(t, align, len);
             if (align)
                 assert(!((size_t)p[i] % align));
         }

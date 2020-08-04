@@ -423,10 +423,9 @@ TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
 TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
     size_t adjust = adjust_size(size, ALIGN_SIZE);
 
-    if (UNLIKELY(align &&
-                 ((align & (align - 1)) || // align is not a power of two
-                  (size & (align - 1)) || // size is not a multiple of align
-                  adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block)))) // size is too large
+    if (UNLIKELY(!size ||
+                 ((align | size) & (align - 1)) || // align!=2**x, size!=n*align
+                 adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block))) // size is too large
         return 0;
 
     if (align <= ALIGN_SIZE)
