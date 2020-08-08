@@ -16,21 +16,27 @@
 static size_t PAGE;
 static size_t MAX_PAGES;
 static size_t curr_pages = 0;
+static void* start_addr = 0;
 
-static size_t resize(tlsf* t, void* start, size_t old_size, size_t req_size) {
+static void* resize(tlsf* t, size_t req_size) {
     (void)t;
+
+    if (!start_addr)
+        start_addr = mmap(0, MAX_PAGES * PAGE,
+                          PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE,
+                          -1, 0);
 
     size_t req_pages = (req_size + PAGE - 1) / PAGE;
     if (req_pages > MAX_PAGES)
-        return old_size;
+        return 0;
 
     if (req_pages != curr_pages) {
         if (req_pages < curr_pages)
-            madvise((char*)start + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_DONTNEED);
+            madvise((char*)start_addr + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_DONTNEED);
         curr_pages = req_pages;
     }
 
-    return req_size;
+    return start_addr;
 }
 
 static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
@@ -153,11 +159,8 @@ int main(void) {
     PAGE = (size_t)sysconf(_SC_PAGESIZE);
     MAX_PAGES = 20 * TLSF_MAX_SIZE / PAGE;
 
-    void* p = mmap(0, MAX_PAGES * PAGE,
-                   PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE,
-                   -1, 0);
     tlsf t;
-    tlsf_init(&t, p, resize);
+    tlsf_init(&t, resize);
 
     srand((unsigned int)time(0));
     large_size_test(&t);

@@ -342,48 +342,43 @@ TLSF_INL void* block_use(tlsf* t, tlsf_block* block, size_t size) {
     return block_payload(block);
 }
 
-TLSF_INL tlsf_block* get_sentinel(tlsf* t) {
-    return to_block(t->size ? (char*)t->start + t->size - 2*BLOCK_OVERHEAD : (char*)t->start - BLOCK_OVERHEAD);
-}
-
-TLSF_INL void check_sentinel(tlsf* t, tlsf_block* block) {
-    (void)t;
+TLSF_INL void check_sentinel(tlsf_block* block) {
     (void)block;
-    TLSF_ASSERT(get_sentinel(t) == block, "not the sentinel");
     TLSF_ASSERT(!block_size(block), "sentinel should be last");
     TLSF_ASSERT(!block_is_free(block), "sentinel block should not be free");
 }
 
 static bool arena_grow(tlsf* t, size_t size) {
-    size_t req_size = (t->size ? t->size + BLOCK_OVERHEAD : 2*BLOCK_OVERHEAD) + size,
-        new_size = t->resize(t, t->start, t->size, req_size);
-    TLSF_ASSERT(new_size == t->size || new_size == req_size, "invalid size after grow");
-    if (new_size == t->size)
+    size_t req_size = (t->size ? t->size + BLOCK_OVERHEAD : 2*BLOCK_OVERHEAD) + size;
+    void* addr = t->resize(t, req_size);
+    if (!addr)
         return false;
-    tlsf_block* block = get_sentinel(t);
+    TLSF_ASSERT((size_t)addr % ALIGN_SIZE == 0, "wrong heap alignment address");
+    tlsf_block* block = to_block(t->size ? (char*)addr + t->size - 2*BLOCK_OVERHEAD : (char*)addr - BLOCK_OVERHEAD);
     if (!t->size)
         block->header = 0;
-    check_sentinel(t, block);
+    check_sentinel(block);
     block->header |= size | BLOCK_BIT_FREE;
     block = block_merge_prev(t, block);
     block_insert(t, block);
     tlsf_block* sentinel = block_link_next(block);
     sentinel->header = BLOCK_BIT_PREV_FREE;
-    t->size = new_size;
-    check_sentinel(t, sentinel);
+    t->size = req_size;
+    check_sentinel(sentinel);
     return true;
 }
 
 static void arena_shrink(tlsf* t, tlsf_block* block) {
-    check_sentinel(t, block_next(block));
-    size_t size = block_size(block),
-        req_size = (char*)block == (char*)t->start - BLOCK_OVERHEAD ? 0 : t->size - size - BLOCK_OVERHEAD;
-    TLSF_ASSERT(t->size >= size, "invalid heap size before shrink");
-    t->size = t->resize(t, t->start, t->size, req_size);
-    TLSF_ASSERT(t->size == req_size, "invalid heap size after shrink");
+    check_sentinel(block_next(block));
+    size_t size = block_size(block);
+    TLSF_ASSERT(t->size + BLOCK_OVERHEAD >= size, "invalid heap size before shrink");
+    t->size = t->size - size - BLOCK_OVERHEAD;
+    if (t->size == BLOCK_OVERHEAD)
+        t->size = 0;
+    t->resize(t, t->size);
     if (t->size) {
         block->header = 0;
-        check_sentinel(t, block);
+        check_sentinel(block);
     }
 }
 
@@ -403,11 +398,9 @@ TLSF_INL tlsf_block* block_find_free(tlsf* t, size_t size) {
     return block;
 }
 
-TLSF_API void tlsf_init(tlsf* t, void* start, tlsf_resize resize) {
+TLSF_API void tlsf_init(tlsf* t, tlsf_resize resize) {
     memset(t, 0, sizeof (tlsf));
-    t->start = start;
     t->resize = resize;
-    TLSF_ASSERT((size_t)t->start % ALIGN_SIZE == 0, "wrong alignment");
 }
 
 TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {

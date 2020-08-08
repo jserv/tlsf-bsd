@@ -92,11 +92,11 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
 }
 
 static size_t max_size;
+static void* mem = 0;
 
-static size_t resize(tlsf* _t, void* _start, size_t old_size, size_t req_size) {
+static void* resize(tlsf* _t, size_t req_size) {
     (void)_t;
-    (void)_start;
-    return req_size > max_size ? old_size : req_size;
+    return req_size <= max_size ? mem : 0;
 }
 
 int main(int argc, char **argv) {
@@ -129,7 +129,8 @@ int main(int argc, char **argv) {
     }
 
     max_size = blk_max * num_blks;
-    tlsf_init(&t, malloc(max_size), resize);
+    mem = malloc(max_size);
+    tlsf_init(&t, resize);
 
     void** blk_array = (void**)calloc(num_blks, sizeof(void*));
     assert(blk_array);
