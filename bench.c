@@ -15,7 +15,7 @@
 #include <time.h>
 #include "tlsf.h"
 
-static tlsf t;
+static tlsf t = TLSF_INIT;
 
 static void usage(const char *name) {
     printf("run a malloc benchmark.\n"
@@ -94,7 +94,7 @@ static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
 static size_t max_size;
 static void* mem = 0;
 
-static void* resize(tlsf* _t, size_t req_size) {
+void* tlsf_resize(tlsf* _t, size_t req_size) {
     (void)_t;
     return req_size <= max_size ? mem : 0;
 }
@@ -130,7 +130,6 @@ int main(int argc, char **argv) {
 
     max_size = blk_max * num_blks;
     mem = malloc(max_size);
-    tlsf_init(&t, resize);
 
     void** blk_array = (void**)calloc(num_blks, sizeof(void*));
     assert(blk_array);

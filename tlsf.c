@@ -350,7 +350,7 @@ TLSF_INL void check_sentinel(tlsf_block* block) {
 
 static bool arena_grow(tlsf* t, size_t size) {
     size_t req_size = (t->size ? t->size + BLOCK_OVERHEAD : 2*BLOCK_OVERHEAD) + size;
-    void* addr = t->resize(t, req_size);
+    void* addr = tlsf_resize(t, req_size);
     if (!addr)
         return false;
     TLSF_ASSERT((size_t)addr % ALIGN_SIZE == 0, "wrong heap alignment address");
@@ -375,7 +375,7 @@ static void arena_shrink(tlsf* t, tlsf_block* block) {
     t->size = t->size - size - BLOCK_OVERHEAD;
     if (t->size == BLOCK_OVERHEAD)
         t->size = 0;
-    t->resize(t, t->size);
+    tlsf_resize(t, t->size);
     if (t->size) {
         block->header = 0;
         check_sentinel(block);
@@ -396,11 +396,6 @@ TLSF_INL tlsf_block* block_find_free(tlsf* t, size_t size) {
     TLSF_ASSERT(block_size(block) >= size, "insufficient block size");
     remove_free_block(t, block, fl, sl);
     return block;
-}
-
-TLSF_API void tlsf_init(tlsf* t, tlsf_resize resize) {
-    memset(t, 0, sizeof (tlsf));
-    t->resize = resize;
 }
 
 TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {

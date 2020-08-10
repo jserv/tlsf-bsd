@@ -18,7 +18,7 @@ static size_t MAX_PAGES;
 static size_t curr_pages = 0;
 static void* start_addr = 0;
 
-static void* resize(tlsf* t, size_t req_size) {
+void* tlsf_resize(tlsf* t, size_t req_size) {
     (void)t;
 
     if (!start_addr)
@@ -158,10 +158,7 @@ static void large_size_test(tlsf* t) {
 int main(void) {
     PAGE = (size_t)sysconf(_SC_PAGESIZE);
     MAX_PAGES = 20 * TLSF_MAX_SIZE / PAGE;
-
-    tlsf t;
-    tlsf_init(&t, resize);
-
+    tlsf t = TLSF_INIT;
     srand((unsigned int)time(0));
     large_size_test(&t);
     random_sizes_test(&t);
