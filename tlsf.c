@@ -1,12 +1,12 @@
 #include "tlsf.h"
-#include <string.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define UNLIKELY(x) __builtin_expect(!!(x), false)
 
 // All allocation sizes and addresses are aligned.
 #define ALIGN_SIZE  ((size_t)1 << ALIGN_SHIFT)
-#define ALIGN_SHIFT (sizeof (size_t) == 8 ? 3 : 2)
+#define ALIGN_SHIFT (sizeof(size_t) == 8 ? 3 : 2)
 
 // First and second level counts
 #define SL_SHIFT 4
@@ -21,22 +21,22 @@
 #define BLOCK_BITS          (BLOCK_BIT_FREE | BLOCK_BIT_PREV_FREE)
 
 // A free block must be large enough to store its header minus the size of the prev field.
-#define BLOCK_OVERHEAD   (sizeof (size_t))
-#define BLOCK_SIZE_MIN   (sizeof (tlsf_block) - sizeof (tlsf_block*))
+#define BLOCK_OVERHEAD   (sizeof(size_t))
+#define BLOCK_SIZE_MIN   (sizeof(tlsf_block) - sizeof(tlsf_block*))
 #define BLOCK_SIZE_MAX   ((size_t)1 << (FL_MAX - 1))
 #define BLOCK_SIZE_SMALL ((size_t)1 << FL_SHIFT)
 
 #ifndef TLSF_ASSERT
-#  ifdef TLSF_ENABLE_ASSERT
-#    include <assert.h>
-#    define TLSF_ASSERT(cond, msg) assert((cond) && msg)
-#  else
-#    define TLSF_ASSERT(cond, msg)
-#  endif
+    #ifdef TLSF_ENABLE_ASSERT
+        #include <assert.h>
+        #define TLSF_ASSERT(cond, msg) assert((cond) && msg)
+    #else
+        #define TLSF_ASSERT(cond, msg)
+    #endif
 #endif
 
 #ifndef TLSF_INL
-#  define TLSF_INL static inline __attribute__ ((always_inline))
+    #define TLSF_INL static inline __attribute__((always_inline))
 #endif
 
 typedef struct tlsf_block_ tlsf_block;
@@ -54,8 +54,8 @@ struct tlsf_block_ {
     tlsf_block *next_free, *prev_free;
 };
 
-_Static_assert(sizeof(size_t) == 4 || sizeof (size_t) == 8, "size_t must be 32 or 64 bit");
-_Static_assert(sizeof(size_t) == sizeof (void*), "size_t must equal pointer size");
+_Static_assert(sizeof(size_t) == 4 || sizeof(size_t) == 8, "size_t must be 32 or 64 bit");
+_Static_assert(sizeof(size_t) == sizeof(void*), "size_t must equal pointer size");
 _Static_assert(ALIGN_SIZE == BLOCK_SIZE_SMALL / SL_COUNT, "sizes are not properly set");
 _Static_assert(BLOCK_SIZE_MIN < BLOCK_SIZE_SMALL, "min allocation size is wrong");
 _Static_assert(BLOCK_SIZE_MAX == TLSF_MAX_SIZE + BLOCK_OVERHEAD, "max allocation size is wrong");
@@ -72,9 +72,8 @@ TLSF_INL uint32_t bitmap_ffs(uint32_t x) {
 
 TLSF_INL uint32_t log2floor(size_t x) {
     TLSF_ASSERT(x > 0, "log2 of zero");
-    return sizeof (size_t) == 8
-        ? (uint32_t)(63 - (uint32_t)__builtin_clzll((unsigned long long)x))
-        : (uint32_t)(31 - (uint32_t)__builtin_clzl((unsigned long)x));
+    return sizeof(size_t) == 8 ? (uint32_t)(63 - (uint32_t)__builtin_clzll((unsigned long long)x))
+                               : (uint32_t)(31 - (uint32_t)__builtin_clzl((unsigned long)x));
 }
 
 TLSF_INL size_t block_size(const tlsf_block* block) {
@@ -95,7 +94,8 @@ TLSF_INL bool block_is_prev_free(const tlsf_block* block) {
 }
 
 TLSF_INL void block_set_prev_free(tlsf_block* block, bool free) {
-    block->header = free ? block->header | BLOCK_BIT_PREV_FREE : block->header & ~BLOCK_BIT_PREV_FREE;
+    block->header =
+        free ? block->header | BLOCK_BIT_PREV_FREE : block->header & ~BLOCK_BIT_PREV_FREE;
 }
 
 TLSF_INL size_t align_up(size_t x, size_t align) {
@@ -113,7 +113,8 @@ TLSF_INL char* block_payload(tlsf_block* block) {
 
 TLSF_INL tlsf_block* to_block(void* ptr) {
     tlsf_block* block = (tlsf_block*)ptr;
-    TLSF_ASSERT(block_payload(block) == align_ptr(block_payload(block), ALIGN_SIZE), "block not aligned properly");
+    TLSF_ASSERT(block_payload(block) == align_ptr(block_payload(block), ALIGN_SIZE),
+                "block not aligned properly");
     return block;
 }
 
@@ -142,7 +143,7 @@ TLSF_INL tlsf_block* block_link_next(tlsf_block* block) {
 }
 
 TLSF_INL bool block_can_split(tlsf_block* block, size_t size) {
-    return block_size(block) >= sizeof (tlsf_block) + size;
+    return block_size(block) >= sizeof(tlsf_block) + size;
 }
 
 TLSF_INL void block_set_free(tlsf_block* block, bool free) {
@@ -163,7 +164,7 @@ TLSF_INL size_t round_block_size(size_t size) {
     return size >= BLOCK_SIZE_SMALL ? (size + t) & ~t : size;
 }
 
-TLSF_INL void mapping(size_t size, uint32_t *fl, uint32_t *sl) {
+TLSF_INL void mapping(size_t size, uint32_t* fl, uint32_t* sl) {
     if (size < BLOCK_SIZE_SMALL) {
         // Store small blocks in first list.
         *fl = 0;
@@ -177,7 +178,7 @@ TLSF_INL void mapping(size_t size, uint32_t *fl, uint32_t *sl) {
     TLSF_ASSERT(*sl < SL_COUNT, "wrong second level");
 }
 
-TLSF_INL tlsf_block* block_find_suitable(tlsf* t, uint32_t *fl, uint32_t *sl) {
+TLSF_INL tlsf_block* block_find_suitable(tlsf* t, uint32_t* fl, uint32_t* sl) {
     TLSF_ASSERT(*fl < FL_COUNT, "wrong first level");
     TLSF_ASSERT(*sl < SL_COUNT, "wrong second level");
 
@@ -349,12 +350,13 @@ TLSF_INL void check_sentinel(tlsf_block* block) {
 }
 
 static bool arena_grow(tlsf* t, size_t size) {
-    size_t req_size = (t->size ? t->size + BLOCK_OVERHEAD : 2*BLOCK_OVERHEAD) + size;
+    size_t req_size = (t->size ? t->size + BLOCK_OVERHEAD : 2 * BLOCK_OVERHEAD) + size;
     void* addr = tlsf_resize(t, req_size);
     if (!addr)
         return false;
     TLSF_ASSERT((size_t)addr % ALIGN_SIZE == 0, "wrong heap alignment address");
-    tlsf_block* block = to_block(t->size ? (char*)addr + t->size - 2*BLOCK_OVERHEAD : (char*)addr - BLOCK_OVERHEAD);
+    tlsf_block* block = to_block(t->size ? (char*)addr + t->size - 2 * BLOCK_OVERHEAD
+                                         : (char*)addr - BLOCK_OVERHEAD);
     if (!t->size)
         block->header = 0;
     check_sentinel(block);
@@ -411,20 +413,19 @@ TLSF_API void* tlsf_malloc(tlsf* t, size_t size) {
 TLSF_API void* tlsf_aalloc(tlsf* t, size_t align, size_t size) {
     size_t adjust = adjust_size(size, ALIGN_SIZE);
 
-    if (UNLIKELY(!size ||
-                 ((align | size) & (align - 1)) || // align!=2**x, size!=n*align
-                 adjust > TLSF_MAX_SIZE - align - sizeof (tlsf_block))) // size is too large
+    if (UNLIKELY(!size || ((align | size) & (align - 1)) ||            // align!=2**x, size!=n*align
+                 adjust > TLSF_MAX_SIZE - align - sizeof(tlsf_block))) // size is too large
         return 0;
 
     if (align <= ALIGN_SIZE)
         return tlsf_malloc(t, size);
 
-    size_t asize = adjust_size(adjust + align - 1 + sizeof (tlsf_block), align);
+    size_t asize = adjust_size(adjust + align - 1 + sizeof(tlsf_block), align);
     tlsf_block* block = block_find_free(t, asize);
     if (UNLIKELY(!block))
         return 0;
 
-    char* mem = align_ptr(block_payload(block) + sizeof (tlsf_block), align);
+    char* mem = align_ptr(block_payload(block) + sizeof(tlsf_block), align);
     block = block_ltrim_free(t, block, (size_t)(mem - block_payload(block)));
     return block_use(t, block, adjust);
 }
@@ -488,22 +489,19 @@ TLSF_API void* tlsf_realloc(tlsf* t, void* mem, size_t size) {
 }
 
 #ifdef TLSF_ENABLE_CHECK
-#include <stdio.h>
-#include <stdlib.h>
-#define CHECK(cond, msg)                                                \
-    ({                                                                  \
-        if (!(cond)) {                                                  \
-            fprintf(stderr, "TLSF CHECK: %s - %s\n", msg, #cond);       \
-            abort();                                                    \
-        }                                                               \
-    })
-
+    #include <stdio.h>
+    #include <stdlib.h>
+    #define CHECK(cond, msg)                                          \
+        ({                                                            \
+            if (!(cond)) {                                            \
+                fprintf(stderr, "TLSF CHECK: %s - %s\n", msg, #cond); \
+                abort();                                              \
+            }                                                         \
+        })
 TLSF_API void tlsf_check(tlsf* t) {
     for (uint32_t i = 0; i < FL_COUNT; ++i) {
         for (uint32_t j = 0; j < SL_COUNT; ++j) {
-            size_t fl_map = t->fl & (1U << i),
-                sl_list = t->sl[i],
-                sl_map = sl_list & (1U << j);
+            size_t fl_map = t->fl & (1U << i), sl_list = t->sl[i], sl_map = sl_list & (1U << j);
             tlsf_block* block = t->block[i][j];
 
             // Check that first- and second-level lists agree.

@@ -2,16 +2,16 @@
  * All rights reserved.
  * Use of this source code is governed by a BSD-style license.
  */
-#include <stdint.h>
+#include "tlsf.h"
+#include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
-#include <assert.h>
 #include <sys/mman.h>
-#include "tlsf.h"
+#include <time.h>
+#include <unistd.h>
 
 static size_t PAGE;
 static size_t MAX_PAGES;
@@ -22,9 +22,8 @@ void* tlsf_resize(tlsf* t, size_t req_size) {
     (void)t;
 
     if (!start_addr)
-        start_addr = mmap(0, MAX_PAGES * PAGE,
-                          PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE,
-                          -1, 0);
+        start_addr = mmap(0, MAX_PAGES * PAGE, PROT_READ | PROT_WRITE,
+                          MAP_ANONYMOUS | MAP_PRIVATE | MAP_NORESERVE, -1, 0);
 
     size_t req_pages = (req_size + PAGE - 1) / PAGE;
     if (req_pages > MAX_PAGES)
@@ -32,7 +31,8 @@ void* tlsf_resize(tlsf* t, size_t req_size) {
 
     if (req_pages != curr_pages) {
         if (req_pages < curr_pages)
-            madvise((char*)start_addr + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE, MADV_DONTNEED);
+            madvise((char*)start_addr + PAGE * req_pages, (size_t)(curr_pages - req_pages) * PAGE,
+                    MADV_DONTNEED);
         curr_pages = req_pages;
     }
 
@@ -42,7 +42,7 @@ void* tlsf_resize(tlsf* t, size_t req_size) {
 static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
     const size_t maxitems = 2 * spacelen;
 
-    void** p = (void**)malloc(maxitems * sizeof(void *));
+    void** p = (void**)malloc(maxitems * sizeof(void*));
     assert(p);
 
     /*
@@ -106,10 +106,10 @@ static void random_test(tlsf* t, size_t spacelen, const size_t cap) {
     free(p);
 }
 
-#define	__arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
+#define __arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
 
 static void random_sizes_test(tlsf* t) {
-    const size_t sizes[] = {16, 32, 64, 128, 256, 512, 1024, 1024 * 1024};//, 128 * 1024 * 1024};
+    const size_t sizes[] = { 16, 32, 64, 128, 256, 512, 1024, 1024 * 1024 }; //, 128 * 1024 * 1024};
 
     for (unsigned i = 0; i < __arraycount(sizes); i++) {
         unsigned n = 1024;

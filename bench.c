@@ -2,7 +2,7 @@
  * All rights reserved.
  * Use of this source code is governed by a BSD-style license.
  */
-#include <unistd.h>
+#include "tlsf.h"
 #include <assert.h>
 #include <errno.h>
 #include <sched.h>
@@ -10,14 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/resource.h>
 #include <time.h>
-#include "tlsf.h"
+#include <unistd.h>
 
 static tlsf t = TLSF_INIT;
 
-static void usage(const char *name) {
+static void usage(const char* name) {
     printf("run a malloc benchmark.\n"
            "usage: %s [-s blk-size|blk-min:blk-max] [-l loop-count] "
            "[-n num-blocks] [-c]\n",
@@ -26,19 +25,19 @@ static void usage(const char *name) {
 }
 
 /* Parse an integer argument. */
-static size_t parse_int_arg(const char *arg, const char *exe_name) {
+static size_t parse_int_arg(const char* arg, const char* exe_name) {
     long ret = strtol(arg, NULL, 0);
     if (errno)
         usage(exe_name);
 
-    return (size_t) ret;
+    return (size_t)ret;
 }
 
 /* Parse a size argument, which is either an integer or two integers
    separated by a colon, denoting a range. */
-static void parse_size_arg(const char *arg, const char *exe_name,
-                           size_t *blk_min, size_t *blk_max) {
-    char *endptr;
+static void parse_size_arg(const char* arg, const char* exe_name, size_t* blk_min,
+                           size_t* blk_max) {
+    char* endptr;
     *blk_min = (size_t)strtol(arg, &endptr, 0);
 
     if (errno)
@@ -61,8 +60,8 @@ static size_t get_random_block_size(size_t blk_min, size_t blk_max) {
     return blk_min;
 }
 
-static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max,
-                                void **blk_array, size_t num_blks, bool clear) {
+static void run_alloc_benchmark(size_t loops, size_t blk_min, size_t blk_max, void** blk_array,
+                                size_t num_blks, bool clear) {
     while (loops--) {
         size_t next_idx = (size_t)rand() % num_blks;
         size_t blk_size = get_random_block_size(blk_min, blk_max);
@@ -99,7 +98,7 @@ void* tlsf_resize(tlsf* _t, size_t req_size) {
     return req_size <= max_size ? mem : 0;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     size_t blk_min = 512, blk_max = 512, num_blks = 10000;
     size_t loops = 10000000;
     bool clear = false;
@@ -107,24 +106,12 @@ int main(int argc, char **argv) {
 
     while ((opt = getopt(argc, argv, "s:l:r:t:n:b:ch")) > 0) {
         switch (opt) {
-        case 's':
-            parse_size_arg(optarg, argv[0], &blk_min, &blk_max);
-            break;
-        case 'l':
-            loops = parse_int_arg(optarg, argv[0]);
-            break;
-        case 'n':
-            num_blks = parse_int_arg(optarg, argv[0]);
-            break;
-        case 'c':
-            clear = true;
-            break;
-        case 'h':
-            usage(argv[0]);
-            break;
-        default:
-            usage(argv[0]);
-            break;
+        case 's': parse_size_arg(optarg, argv[0], &blk_min, &blk_max); break;
+        case 'l': loops = parse_int_arg(optarg, argv[0]); break;
+        case 'n': num_blks = parse_int_arg(optarg, argv[0]); break;
+        case 'c': clear = true; break;
+        case 'h': usage(argv[0]); break;
+        default: usage(argv[0]); break;
         }
     }
 
@@ -141,23 +128,23 @@ int main(int argc, char **argv) {
 
     printf("blk_min=%zu to blk_max=%zu\n", blk_min, blk_max);
 
-    run_alloc_benchmark(loops, blk_min, blk_max,
-                        blk_array, num_blks, clear);
+    run_alloc_benchmark(loops, blk_min, blk_max, blk_array, num_blks, clear);
 
     err = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
     assert(err == 0);
     free(blk_array);
 
-    double elapsed = (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_nsec - start.tv_nsec) * 1e-9;
+    double elapsed =
+        (double)(end.tv_sec - start.tv_sec) + (double)(end.tv_nsec - start.tv_nsec) * 1e-9;
 
     struct rusage usage;
     err = getrusage(RUSAGE_SELF, &usage);
     assert(err == 0);
 
     /* Dump both machine and human readable versions */
-    printf("%zu:%zu:%zu:%u:%lu:%.6f: took %.6f s for %zu malloc/free\nbenchmark loops of %zu-%zu bytes.  ~%.3f us per loop\n",
-           blk_min, blk_max, loops,
-           clear, usage.ru_maxrss, elapsed, elapsed, loops, blk_min,
+    printf("%zu:%zu:%zu:%u:%lu:%.6f: took %.6f s for %zu malloc/free\nbenchmark loops of %zu-%zu "
+           "bytes.  ~%.3f us per loop\n",
+           blk_min, blk_max, loops, clear, usage.ru_maxrss, elapsed, elapsed, loops, blk_min,
            blk_max, elapsed / (double)loops * 1e6);
 
     return 0;
