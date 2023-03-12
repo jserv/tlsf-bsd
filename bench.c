@@ -39,8 +39,9 @@ static size_t parse_int_arg(const char *arg, const char *exe_name)
     return (size_t) ret;
 }
 
-/* Parse a size argument, which is either an integer or two integers
-   separated by a colon, denoting a range. */
+/* Parse a size argument, which is either an integer or two integers separated
+ * by a colon, denoting a range.
+ */
 static void parse_size_arg(const char *arg,
                            const char *exe_name,
                            size_t *blk_min,
@@ -84,13 +85,15 @@ static void run_alloc_benchmark(size_t loops,
         if (blk_array[next_idx]) {
             if (rand() % 10 == 0) {
                 /* Insert the newly alloced block into the array at a random
-                 * point. */
+                 * point.
+                 */
                 blk_array[next_idx] =
                     tlsf_realloc(&t, blk_array[next_idx], blk_size);
             } else {
                 tlsf_free(&t, blk_array[next_idx]);
                 /* Insert the newly alloced block into the array at a random
-                 * point. */
+                 * point.
+                 */
                 blk_array[next_idx] = tlsf_malloc(&t, blk_size);
             }
         } else {

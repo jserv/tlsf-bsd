@@ -50,8 +50,7 @@ static void random_test(tlsf *t, size_t spacelen, const size_t cap)
     void **p = (void **) malloc(maxitems * sizeof(void *));
     assert(p);
 
-    /*
-     * Allocate random sizes up to the cap threshold.
+    /* Allocate random sizes up to the cap threshold.
      * Track them in an array.
      */
     int64_t rest = (int64_t) spacelen * (rand() % 6 + 1);
@@ -92,8 +91,7 @@ static void random_test(tlsf *t, size_t spacelen, const size_t cap)
             break;
     }
 
-    /*
-     * Randomly deallocate the memory blocks until all of them are freed.
+    /* Randomly deallocate the memory blocks until all of them are freed.
      * The free space should match the free space after initialisation.
      */
     for (unsigned n = i; n;) {
@@ -116,8 +114,7 @@ static void random_test(tlsf *t, size_t spacelen, const size_t cap)
 
 static void random_sizes_test(tlsf *t)
 {
-    const size_t sizes[] = {16,  32,   64,         128, 256,
-                            512, 1024, 1024 * 1024};  //, 128 * 1024 * 1024};
+    const size_t sizes[] = {16, 32, 64, 128, 256, 512, 1024, 1024 * 1024};
 
     for (unsigned i = 0; i < __arraycount(sizes); i++) {
         unsigned n = 1024;
