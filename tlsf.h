@@ -26,8 +26,17 @@ typedef struct {
 
 void *tlsf_resize(tlsf_t *, size_t);
 void *tlsf_aalloc(tlsf_t *, size_t, size_t);
-void *tlsf_malloc(tlsf_t *, size_t);
+
+/**
+ * Allocates the requested @size bytes of memory and returns a pointer to it.
+ * On failure, returns NULL.
+ */
+void *tlsf_malloc(tlsf_t *, size_t size);
 void *tlsf_realloc(tlsf_t *, void *, size_t);
+
+/**
+ * Releases the previously allocated memory, given the pointer.
+ */
 void tlsf_free(tlsf_t *, void *);
 
 #ifdef TLSF_ENABLE_CHECK

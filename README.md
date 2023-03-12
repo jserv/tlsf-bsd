@@ -17,6 +17,57 @@ therefore no GPL restrictions apply.
 * Not thread safe. API calls must be protected by a mutex in a multi-threaded environment.
 * Works in environments with only minimal libc, uses only `stddef.h`, `stdbool.h`, `stdint.h` and `string.h`.
 
+## How it works
+
+This package offers constant, O(1)-time memory block allocation and deallocation.
+
+The structure consists of an array indexed by `log(2, request_size)`.
+In other words, requests are divided up according to the requsted size's most significant bit (MSB).
+A pointer to the second level of the structure is contained in each item of the array.
+At this level, the free blocks of each slab size are divided into x additional groups,
+where x is a configurable number.
+An array of size x that implements this partitioning is indexed by taking the value of the `log(2, x)` bits that follow the MSB.
+Each value denotes the start of a linked list of free blocks (or is `NULL`).
+
+Finding a free block in the correctly sized class (or, if none are available, in a larger size class) in constant time requires using the bitmaps representing the availability of free blocks (of a certain size class).
+
+When `tlsf_free()` is called, the block examines if it may coalesce with nearby free blocks before returning to the free list.
+```
++--------------------------------------------------------------------+
+| Main structure:                                                    |
+|   Segregated List(array of pointers to second levels)              |
+|   Bitmap showing which levels have free blocks                     |
+|                                                                    |
+|     Blocks fit into different size ranges:                         |
+|                                                                    |
+|       |2^31|...|2^9|2^8|2^7|2^6|2^5|2^4                            |
++--------------------------------------------------------------------+
+                            |       |
+                            |       |       +-----------------------+
+                            |       |       | Level Two             |
++-----------------------+   |       +-----> |   Array of free lists |
+| Level Two             |<--+               |   Bitmap              |
+|   Array of free lists |                   +-----------------------+
+|   bitmaps             |
+|   |   |   ... |   |   |
++-----------------------+
+    |       \
+    |        \
++-----------+  +------------+
+| Free_Block | | Free_Block |
+|            | |            |
+|            | |            |
++------------+ +------------+
+      |
+      |
+      |
++------------+
+| Free_Block |
+|            |
+|            |
++------------+
+```
+
 ## Reference
 
 M. Masmano, I. Ripoll, A. Crespo, and J. Real.
