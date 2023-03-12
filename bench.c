@@ -1,7 +1,9 @@
-/* Copyright (c) 2016 National Cheng Kung University, Taiwan.
+/*
+ * Copyright (c) 2016 National Cheng Kung University, Taiwan.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style license.
  */
+
 #include "tlsf.h"
 #include <assert.h>
 #include <errno.h>

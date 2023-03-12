@@ -1,3 +1,10 @@
+/*
+ * Copyright (c) 2006-2016, Matthew Conte
+ * Copyright (c) 2017-2020, Daniel Mendler
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style license.
+ */
+
 #include "tlsf.h"
 #include <stdbool.h>
 #include <string.h>
