@@ -17,7 +17,7 @@
 
 #include "tlsf.h"
 
-static tlsf t = TLSF_INIT;
+static tlsf_t t = TLSF_INIT;
 
 static void usage(const char *name)
 {
@@ -115,7 +115,7 @@ static void run_alloc_benchmark(size_t loops,
 static size_t max_size;
 static void *mem = 0;
 
-void *tlsf_resize(tlsf *_t, size_t req_size)
+void *tlsf_resize(tlsf_t *_t, size_t req_size)
 {
     (void) _t;
     return req_size <= max_size ? mem : 0;

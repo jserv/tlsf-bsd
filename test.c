@@ -21,7 +21,7 @@ static size_t MAX_PAGES;
 static size_t curr_pages = 0;
 static void *start_addr = 0;
 
-void *tlsf_resize(tlsf *t, size_t req_size)
+void *tlsf_resize(tlsf_t *t, size_t req_size)
 {
     (void) t;
 
@@ -43,7 +43,7 @@ void *tlsf_resize(tlsf *t, size_t req_size)
     return start_addr;
 }
 
-static void random_test(tlsf *t, size_t spacelen, const size_t cap)
+static void random_test(tlsf_t *t, size_t spacelen, const size_t cap)
 {
     const size_t maxitems = 2 * spacelen;
 
@@ -112,7 +112,7 @@ static void random_test(tlsf *t, size_t spacelen, const size_t cap)
 
 #define __arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
 
-static void random_sizes_test(tlsf *t)
+static void random_sizes_test(tlsf_t *t)
 {
     const size_t sizes[] = {16, 32, 64, 128, 256, 512, 1024, 1024 * 1024};
 
@@ -127,7 +127,7 @@ static void random_sizes_test(tlsf *t)
     }
 }
 
-static void large_alloc(tlsf *t, size_t s)
+static void large_alloc(tlsf_t *t, size_t s)
 {
     printf("large alloc %zu\n", s);
     for (size_t d = 0; d < 100 && d < s; ++d) {
@@ -147,7 +147,7 @@ static void large_alloc(tlsf *t, size_t s)
     }
 }
 
-static void large_size_test(tlsf *t)
+static void large_size_test(tlsf_t *t)
 {
     size_t s = 1;
     while (s <= TLSF_MAX_SIZE) {
@@ -166,7 +166,7 @@ int main(void)
 {
     PAGE = (size_t) sysconf(_SC_PAGESIZE);
     MAX_PAGES = 20 * TLSF_MAX_SIZE / PAGE;
-    tlsf t = TLSF_INIT;
+    tlsf_t t = TLSF_INIT;
     srand((unsigned int) time(0));
     large_size_test(&t);
     random_sizes_test(&t);
