@@ -494,9 +494,9 @@ void *tlsf_aalloc(tlsf_t *t, size_t align, size_t size)
 
     if (UNLIKELY(
             !size ||
-            ((align | size) & (align - 1)) || /* align!=2**x, size!=n*align */
+            ((align | size) & (align - 1)) /* align!=2**x, size!=n*align */ ||
             adjust > TLSF_MAX_SIZE - align -
-                         sizeof(tlsf_block_t))) /* size is too large */
+                         sizeof(tlsf_block_t) /* size is too large */))
         return 0;
 
     if (align <= ALIGN_SIZE)
