@@ -130,7 +130,7 @@ INLINE void block_set_prev_free(tlsf_block_t *block, bool free)
 INLINE size_t align_up(size_t x, size_t align)
 {
     ASSERT(!(align & (align - 1)), "must align to a power of two");
-    return (x + (align - 1)) & ~(align - 1);
+    return (((x - 1) | (align - 1)) + 1);
 }
 
 INLINE char *align_ptr(char *p, size_t align)
