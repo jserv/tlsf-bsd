@@ -110,13 +110,13 @@ static void random_test(tlsf_t *t, size_t spacelen, const size_t cap)
     free(p);
 }
 
-#define __arraycount(__x) (sizeof(__x) / sizeof(__x[0]))
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static void random_sizes_test(tlsf_t *t)
 {
     const size_t sizes[] = {16, 32, 64, 128, 256, 512, 1024, 1024 * 1024};
 
-    for (unsigned i = 0; i < __arraycount(sizes); i++) {
+    for (unsigned i = 0; i < ARRAY_SIZE(sizes); i++) {
         unsigned n = 1024;
 
         while (n--) {
