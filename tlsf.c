@@ -237,7 +237,7 @@ INLINE tlsf_block_t *block_find_suitable(tlsf_t *t, uint32_t *fl, uint32_t *sl)
 
         /* No free blocks available, memory has been exhausted. */
         if (UNLIKELY(!fl_map))
-            return 0;
+            return NULL;
 
         *fl = bitmap_ffs(fl_map);
         ASSERT(*fl < FL_COUNT, "wrong first level");
@@ -372,24 +372,24 @@ INLINE tlsf_block_t *block_merge_next(tlsf_t *t, tlsf_block_t *block)
 INLINE void block_rtrim_free(tlsf_t *t, tlsf_block_t *block, size_t size)
 {
     ASSERT(block_is_free(block), "block must be free");
-    if (block_can_split(block, size)) {
-        tlsf_block_t *rest = block_split(block, size);
-        block_link_next(block);
-        block_set_prev_free(rest, true);
-        block_insert(t, rest);
-    }
+    if (!block_can_split(block, size))
+        return;
+    tlsf_block_t *rest = block_split(block, size);
+    block_link_next(block);
+    block_set_prev_free(rest, true);
+    block_insert(t, rest);
 }
 
 /* Trim any trailing block space off the end of a used block, return to pool. */
 INLINE void block_rtrim_used(tlsf_t *t, tlsf_block_t *block, size_t size)
 {
     ASSERT(!block_is_free(block), "block must be used");
-    if (block_can_split(block, size)) {
-        tlsf_block_t *rest = block_split(block, size);
-        block_set_prev_free(rest, false);
-        rest = block_merge_next(t, rest);
-        block_insert(t, rest);
-    }
+    if (!block_can_split(block, size))
+        return;
+    tlsf_block_t *rest = block_split(block, size);
+    block_set_prev_free(rest, false);
+    rest = block_merge_next(t, rest);
+    block_insert(t, rest);
 }
 
 INLINE tlsf_block_t *block_ltrim_free(tlsf_t *t,
@@ -466,7 +466,7 @@ INLINE tlsf_block_t *block_find_free(tlsf_t *t, size_t size)
     tlsf_block_t *block = block_find_suitable(t, &fl, &sl);
     if (UNLIKELY(!block)) {
         if (!arena_grow(t, rounded))
-            return 0;
+            return NULL;
         block = block_find_suitable(t, &fl, &sl);
         ASSERT(block, "no block found");
     }
@@ -479,10 +479,10 @@ void *tlsf_malloc(tlsf_t *t, size_t size)
 {
     size = adjust_size(size, ALIGN_SIZE);
     if (UNLIKELY(size > TLSF_MAX_SIZE))
-        return 0;
+        return NULL;
     tlsf_block_t *block = block_find_free(t, size);
     if (UNLIKELY(!block))
-        return 0;
+        return NULL;
     return block_use(t, block, size);
 }
 
@@ -495,7 +495,7 @@ void *tlsf_aalloc(tlsf_t *t, size_t align, size_t size)
             ((align | size) & (align - 1)) /* align!=2**x, size!=n*align */ ||
             adjust > TLSF_MAX_SIZE - align -
                          sizeof(tlsf_block_t) /* size is too large */))
-        return 0;
+        return NULL;
 
     if (align <= ALIGN_SIZE)
         return tlsf_malloc(t, size);
@@ -504,7 +504,7 @@ void *tlsf_aalloc(tlsf_t *t, size_t align, size_t size)
         adjust_size(adjust + align - 1 + sizeof(tlsf_block_t), align);
     tlsf_block_t *block = block_find_free(t, asize);
     if (UNLIKELY(!block))
-        return 0;
+        return NULL;
 
     char *mem = align_ptr(block_payload(block) + sizeof(tlsf_block_t), align);
     block = block_ltrim_free(t, block, (size_t) (mem - block_payload(block)));
@@ -534,7 +534,7 @@ void *tlsf_realloc(tlsf_t *t, void *mem, size_t size)
     /* Zero-size requests are treated as free. */
     if (UNLIKELY(mem && !size)) {
         tlsf_free(t, mem);
-        return 0;
+        return NULL;
     }
 
     /* Null-pointer requests are treated as malloc. */
@@ -545,7 +545,7 @@ void *tlsf_realloc(tlsf_t *t, void *mem, size_t size)
     size_t avail = block_size(block);
     size = adjust_size(size, ALIGN_SIZE);
     if (UNLIKELY(size > TLSF_MAX_SIZE))
-        return 0;
+        return NULL;
 
     ASSERT(!block_is_free(block), "block already marked as free");
 
