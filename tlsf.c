@@ -16,7 +16,11 @@
 
 /* All allocation sizes and addresses are aligned. */
 #define ALIGN_SIZE ((size_t) 1 << ALIGN_SHIFT)
-#define ALIGN_SHIFT (sizeof(size_t) == 8 ? 3 : 2)
+#if __SIZE_WIDTH__ == 64
+#define ALIGN_SHIFT 3
+#else
+#define ALIGN_SHIFT 2
+#endif
 
 /* First level (FL) and second level (SL) counts */
 #define SL_SHIFT 4
@@ -94,10 +98,11 @@ INLINE uint32_t bitmap_ffs(uint32_t x)
 INLINE uint32_t log2floor(size_t x)
 {
     ASSERT(x > 0, "log2 of zero");
-    return sizeof(size_t) == 8
-               ? (uint32_t) (63 -
-                             (uint32_t) __builtin_clzll((unsigned long long) x))
-               : (uint32_t) (31 - (uint32_t) __builtin_clzl((unsigned long) x));
+#if __SIZE_WIDTH__ == 64
+    return (uint32_t) (63 - (uint32_t) __builtin_clzll((unsigned long long) x));
+#else
+    return (uint32_t) (31 - (uint32_t) __builtin_clzl((unsigned long) x));
+#endif
 }
 
 INLINE size_t block_size(const tlsf_block_t *block)
