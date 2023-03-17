@@ -74,6 +74,11 @@ M. Masmano, I. Ripoll, A. Crespo, and J. Real.
 TLSF: a new dynamic memory allocator for real-time systems.
 In Proc. ECRTS (2004), IEEE Computer Society, pp. 79-86.
 
+## Related Projects
+
+* [tlsf-pmr](https://github.com/LiemDQ/tlsf-pmr): a memory resource for use with `polymorphic_allocator` that uses the Two-Level Segregated Fit algorithm as an allocation scheme.
+
+
 ## Licensing
 
 TLSF-BSD is freely redistributable under the 3-clause BSD License.
