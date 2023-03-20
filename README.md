@@ -50,7 +50,6 @@ Each value denotes the start of a linked list of free blocks (or is `NULL`).
 Finding a free block in the correctly sized class (or, if none are available, in a larger size class) in constant time requires using the bitmaps representing the availability of free blocks (of a certain size class).
 
 When `tlsf_free()` is called, the block examines if it may coalesce with nearby free blocks before returning to the free list.
-![TLSF Data Structure for Free Blocks](assets/data-structure.png)
 
 ### Finding a free block in TLSF `malloc()`
 
