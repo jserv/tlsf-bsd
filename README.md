@@ -1,7 +1,7 @@
 # tlsf-bsd: Two-Level Segregated Fit Memory Allocator
 
 Two-Level Segregated Fit (TLSF) memory allocator implementation derived from the BSD-licensed implementation by [Matthew Conte](https://github.com/mattconte/tlsf).
-This code was based on the [TLSF documentation](http://www.gii.upv.es/tlsf/main/docs).
+This code was based on the [TLSF documentation](http://www.gii.upv.es/tlsf/main/docs.html).
 
 A novel technique called TLSF for dynamic memory allocation that maintains the effectiveness of the allocation and deallocation operations with a temporal cost of O(1).
 For long-running applications, the fragmentation issue also has a greater influence on system performance.
