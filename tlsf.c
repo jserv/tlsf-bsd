@@ -463,14 +463,14 @@ static void arena_shrink(tlsf_t *t, tlsf_block_t *block)
     }
 }
 
-INLINE tlsf_block_t *block_find_free(tlsf_t *t, size_t size)
+INLINE tlsf_block_t *block_find_free(tlsf_t *t, size_t *size)
 {
-    size_t rounded = round_block_size(size);
+    *size = round_block_size(*size);
     uint32_t fl, sl;
-    mapping(rounded, &fl, &sl);
+    mapping(*size, &fl, &sl);
     tlsf_block_t *block = block_find_suitable(t, &fl, &sl);
     if (UNLIKELY(!block)) {
-        if (!arena_grow(t, rounded))
+        if (!arena_grow(t, *size))
             return NULL;
         block = block_find_suitable(t, &fl, &sl);
         ASSERT(block, "no block found");
@@ -485,7 +485,7 @@ void *tlsf_malloc(tlsf_t *t, size_t size)
     size = adjust_size(size, ALIGN_SIZE);
     if (UNLIKELY(size > TLSF_MAX_SIZE))
         return NULL;
-    tlsf_block_t *block = block_find_free(t, size);
+    tlsf_block_t *block = block_find_free(t, &size);
     if (UNLIKELY(!block))
         return NULL;
     return block_use(t, block, size);
@@ -507,7 +507,7 @@ void *tlsf_aalloc(tlsf_t *t, size_t align, size_t size)
 
     size_t asize =
         adjust_size(adjust + align - 1 + sizeof(tlsf_block_t), align);
-    tlsf_block_t *block = block_find_free(t, asize);
+    tlsf_block_t *block = block_find_free(t, &asize);
     if (UNLIKELY(!block))
         return NULL;
 
