@@ -33,6 +33,18 @@ void *tlsf_resize(tlsf_t *, size_t);
 void *tlsf_aalloc(tlsf_t *, size_t, size_t);
 
 /**
+ * Append a memory block to an existing pool, potentially coalescing with
+ * the last block if it's free. Returns the number of bytes actually used
+ * from the memory block for pool expansion.
+ *
+ * @param tlsf The TLSF allocator instance
+ * @param mem Pointer to the memory block to append
+ * @param size Size of the memory block in bytes
+ * @return Number of bytes used from the memory block, 0 on failure
+ */
+size_t tlsf_append_pool(tlsf_t *tlsf, void *mem, size_t size);
+
+/**
  * Allocates the requested @size bytes of memory and returns a pointer to it.
  * On failure, returns NULL.
  */

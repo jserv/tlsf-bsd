@@ -458,6 +458,108 @@ static bool arena_grow(tlsf_t *t, size_t size)
     return true;
 }
 
+static size_t arena_append_pool(tlsf_t *t, void *mem, size_t size)
+{
+    if (!t->size || !mem || size < 2 * BLOCK_OVERHEAD)
+        return 0;
+
+    /* Align memory block boundaries */
+    char *start = align_ptr((char *) mem, ALIGN_SIZE);
+    char *end = (char *) mem + size;
+    size_t aligned_size = (size_t) (end - start) & ~(ALIGN_SIZE - 1);
+
+    if (aligned_size < 2 * BLOCK_OVERHEAD)
+        return 0;
+
+    /* Get current pool information */
+    void *current_pool_start =
+        tlsf_resize(t, t->size); /* Ensure current pool is available */
+    if (!current_pool_start)
+        return 0;
+
+    char *current_pool_end = (char *) current_pool_start + t->size;
+
+    /* Only support coalescing if the new memory is immediately adjacent to the
+     * current pool
+     */
+    if (start != current_pool_end)
+        return 0;
+
+    /* Update the pool size first to include the new memory */
+    size_t old_size = t->size;
+    size_t new_total_size = t->size + aligned_size;
+
+    /* Try to resize the pool to include the new memory */
+    void *resized_pool = tlsf_resize(t, new_total_size);
+    if (!resized_pool)
+        return 0;
+
+    /* Update our pool size */
+    t->size = new_total_size;
+
+    /* Find the current sentinel block */
+    tlsf_block_t *old_sentinel =
+        to_block((char *) resized_pool + old_size - 2 * BLOCK_OVERHEAD);
+    check_sentinel(old_sentinel);
+
+    /* Check if the block before the sentinel is free */
+    tlsf_block_t *last_block = NULL;
+    if (block_is_prev_free(old_sentinel)) {
+        last_block = block_prev(old_sentinel);
+        ASSERT(last_block && block_is_free(last_block),
+               "last block should be free");
+        /* Remove the last free block from lists since we'll recreate it */
+        block_remove(t, last_block);
+    }
+
+    /* Calculate the new free block size */
+    size_t new_free_size =
+        aligned_size + BLOCK_OVERHEAD; /* Include old sentinel space */
+    tlsf_block_t *new_free_block;
+
+    if (last_block) {
+        /* Merge with the existing free block */
+        new_free_size += block_size(last_block) + BLOCK_OVERHEAD;
+        new_free_block = last_block;
+    } else {
+        /* Convert the old sentinel into the start of the new free block */
+        new_free_block = old_sentinel;
+    }
+
+    /* Set up the new free block header */
+    new_free_block->header = new_free_size | BLOCK_BIT_FREE;
+
+    /* Set up proper linking for the new free block */
+    if (!last_block && old_size > 2 * BLOCK_OVERHEAD) {
+        /* There's a previous block, find it by scanning backwards */
+        char *scan_start = (char *) old_sentinel - BLOCK_OVERHEAD;
+        char *pool_start = (char *) resized_pool;
+
+        /* Simple backward scan to find the previous block */
+        for (char *scan_ptr = scan_start; scan_ptr >= pool_start;
+             scan_ptr -= ALIGN_SIZE) {
+            tlsf_block_t *candidate = to_block(scan_ptr - BLOCK_OVERHEAD);
+            if ((char *) candidate >= pool_start &&
+                (char *) candidate + BLOCK_OVERHEAD + block_size(candidate) ==
+                    (char *) old_sentinel) {
+                new_free_block->prev = candidate;
+                block_set_prev_free(new_free_block, block_is_free(candidate));
+                break;
+            }
+        }
+    }
+
+    /* Insert the new free block into the appropriate list */
+    block_insert(t, new_free_block);
+
+    /* Create a new sentinel at the end */
+    tlsf_block_t *new_sentinel = block_link_next(new_free_block);
+    new_sentinel->header = BLOCK_BIT_PREV_FREE;
+    check_sentinel(new_sentinel);
+
+    return aligned_size;
+}
+
 static void arena_shrink(tlsf_t *t, tlsf_block_t *block)
 {
     check_sentinel(block_next(block));
@@ -592,6 +694,14 @@ void *tlsf_realloc(tlsf_t *t, void *mem, size_t size)
     /* Trim the resulting block and return the original pointer. */
     block_rtrim_used(t, block, size);
     return mem;
+}
+
+size_t tlsf_append_pool(tlsf_t *t, void *mem, size_t size)
+{
+    if (UNLIKELY(!t || !mem || !size))
+        return 0;
+
+    return arena_append_pool(t, mem, size);
 }
 
 #ifdef TLSF_ENABLE_CHECK

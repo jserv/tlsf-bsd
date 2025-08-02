@@ -162,14 +162,59 @@ static void large_size_test(tlsf_t *t)
     }
 }
 
+static void append_pool_test(tlsf_t *t)
+{
+    printf("Pool append functionality test\n");
+
+    /* Simple test: Initial allocation */
+    void *ptr1 = tlsf_malloc(t, 1000);
+    assert(ptr1);
+
+    size_t initial_size = t->size;
+
+    /* Try to append adjacent memory */
+    void *append_addr = (char *) start_addr + initial_size;
+    size_t appended = tlsf_append_pool(t, append_addr, 4096);
+
+    if (appended > 0) {
+        printf("Pool append successful: %zu bytes added\n", appended);
+
+        /* Test large allocation from expanded pool */
+        void *large_ptr = tlsf_malloc(t, 3000);
+        if (large_ptr) {
+            printf("Large allocation from expanded pool successful\n");
+            tlsf_free(t, large_ptr);
+        }
+    } else {
+        printf("Pool append not possible (non-adjacent memory)\n");
+    }
+
+    /* Test non-adjacent append (should fail) */
+    char separate_memory[2048];
+    size_t non_adjacent =
+        tlsf_append_pool(t, separate_memory, sizeof(separate_memory));
+    assert(non_adjacent == 0);
+    printf("Non-adjacent append correctly rejected\n");
+
+    tlsf_free(t, ptr1);
+    tlsf_check(t);
+    printf("Pool append test completed\n");
+}
+
 int main(void)
 {
     PAGE = (size_t) sysconf(_SC_PAGESIZE);
     MAX_PAGES = 20 * TLSF_MAX_SIZE / PAGE;
     tlsf_t t = TLSF_INIT;
     srand((unsigned int) time(0));
+
+    /* Run existing tests */
     large_size_test(&t);
     random_sizes_test(&t);
+
+    /* Run pool append test */
+    append_pool_test(&t);
+
     puts("OK!");
     return 0;
 }
