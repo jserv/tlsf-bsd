@@ -229,6 +229,16 @@ INLINE void mapping(size_t size, uint32_t *fl, uint32_t *sl)
     ASSERT(*sl < SL_COUNT, "wrong second level");
 }
 
+/* Calculate the minimum block size for a given FL/SL bin */
+INLINE size_t mapping_size(uint32_t fl, uint32_t sl)
+{
+    if (fl == 0)
+        return sl * (BLOCK_SIZE_SMALL / SL_COUNT);
+
+    size_t size = (size_t) 1 << (fl + FL_SHIFT - 1);
+    return size + (sl * (size >> SL_SHIFT));
+}
+
 INLINE tlsf_block_t *block_find_suitable(tlsf_t *t, uint32_t *fl, uint32_t *sl)
 {
     ASSERT(*fl < FL_COUNT, "wrong first level");
@@ -475,6 +485,12 @@ INLINE tlsf_block_t *block_find_free(tlsf_t *t, size_t *size)
         block = block_find_suitable(t, &fl, &sl);
         ASSERT(block, "no block found");
     }
+
+    /* Update size to match the FL/SL bin that was actually used.
+     * This ensures that when the block is freed, it will be placed in the same
+     * bin it was allocated from.
+     */
+    *size = mapping_size(fl, sl);
     ASSERT(block_size(block) >= *size, "insufficient block size");
     remove_free_block(t, block, fl, sl);
     return block;
@@ -499,7 +515,8 @@ void *tlsf_aalloc(tlsf_t *t, size_t align, size_t size)
             !size ||
             ((align | size) & (align - 1)) /* align!=2**x, size!=n*align */ ||
             align > TLSF_MAX_SIZE || sizeof(tlsf_block_t) > TLSF_MAX_SIZE ||
-            adjust > TLSF_MAX_SIZE - align - sizeof(tlsf_block_t) /* size is too large */))
+            adjust > TLSF_MAX_SIZE - align -
+                         sizeof(tlsf_block_t) /* size is too large */))
         return NULL;
 
     if (align <= ALIGN_SIZE)
