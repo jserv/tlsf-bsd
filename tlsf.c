@@ -238,7 +238,7 @@ INLINE tlsf_block_t *block_find_suitable(tlsf_t *t, uint32_t *fl, uint32_t *sl)
     uint32_t sl_map = t->sl[*fl] & (~0U << *sl);
     if (!sl_map) {
         /* No block exists. Search in the next largest first-level list. */
-        uint32_t fl_map = t->fl & (uint32_t) (~(uint64_t) 0 << (*fl + 1));
+        uint32_t fl_map = t->fl & ((*fl + 1 >= 32) ? 0U : (~0U << (*fl + 1)));
 
         /* No free blocks available, memory has been exhausted. */
         if (UNLIKELY(!fl_map))
@@ -475,7 +475,7 @@ INLINE tlsf_block_t *block_find_free(tlsf_t *t, size_t *size)
         block = block_find_suitable(t, &fl, &sl);
         ASSERT(block, "no block found");
     }
-    ASSERT(block_size(block) >= size, "insufficient block size");
+    ASSERT(block_size(block) >= *size, "insufficient block size");
     remove_free_block(t, block, fl, sl);
     return block;
 }

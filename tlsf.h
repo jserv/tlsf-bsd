@@ -21,7 +21,7 @@ extern "C" {
 #define _TLSF_FL_MAX 30
 #endif
 #define TLSF_MAX_SIZE (((size_t) 1 << (_TLSF_FL_MAX - 1)) - sizeof(size_t))
-#define TLSF_INIT ((tlsf_t){.size = 0})
+#define TLSF_INIT ((tlsf_t) {.size = 0})
 
 typedef struct {
     uint32_t fl, sl[_TLSF_FL_COUNT];
